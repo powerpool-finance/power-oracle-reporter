@@ -336,7 +336,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     }
 
     try {
-      options.gas = Math.round((await method.estimateGas(options)) * 1.1);
+      options.gas = Math.round((await method.estimateGas(options).catch(() => 4000000)) * 1.1);
     } catch (e) {
       throw new Error('Revert: ' + JSON.stringify(options))
     }
