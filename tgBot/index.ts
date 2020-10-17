@@ -45,6 +45,7 @@ class PowerOracleTgBot implements IPowerOracleTgBot {
         if(!this.isReady()) {
             return;
         }
+        console.log('sendMessageToAdmin', messageText);
         return this.bot.sendMessage(config.adminId, messageText, {parse_mode: 'HTML'});
     }
 }

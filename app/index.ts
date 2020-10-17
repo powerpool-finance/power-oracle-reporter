@@ -16,6 +16,7 @@ import {IPowerOracleApp} from "./interface";
 
 const _ = require('lodash');
 const config = require('./config');
+const utils = require('../utils');
 
 module.exports = async (web3, tgBot) => {
     const app = new PowerOracleApp(web3, tgBot);
@@ -68,8 +69,14 @@ class PowerOracleApp implements IPowerOracleApp {
     }
 
     handleError(error) {
+        console.error(error);
+        const stackArr = error.stack.split("\n");
+        let appStack = stackArr
+            .filter(stackStr => !_.includes(stackStr, 'node_modules')  && !_.includes(stackStr, error.message))
+            .map(stackStr => _.trim(stackStr, " "))
+            .join("\n");
         // console.log('error.stack.split("\\n")', error.stack.split("\n"));
-        return this.tgBot.sendMessageToAdmin(`Error in bot:\n<code>${error.message}</code>\nIn <code>${_.trim(error.stack.split("\n")[1], " ")}</code>`)
+        return this.tgBot.sendMessageToAdmin(`Error in bot:\n\n<pre>${utils.tgClear(error.message)}</pre>\n\n<pre>${utils.tgClear(appStack)}</pre>`)
     }
 
     async handleTx(hash) {

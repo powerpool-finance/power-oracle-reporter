@@ -323,9 +323,10 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
 
   async getTransaction(method, contractAddress, from, privateKey, nonce = null, gasPriceMul = 1) {
     const gasPrice = (await this.getGasPrice()) * gasPriceMul;
-    let options: any = { from, gasPrice, nonce };
-
     const encodedABI = method.encodeABI();
+
+    let options: any = { from, gasPrice, nonce, data: encodedABI, to: contractAddress };
+
     if (!options.nonce) {
       options.nonce = await this.httpWeb3.eth.getTransactionCount(from);
     }
@@ -334,13 +335,12 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       options.nonce = this.httpWeb3.utils.hexToNumber(options.nonce);
     }
 
-    options.gas = Math.round((await method.estimateGas(options)) * 1.1);
+    try {
+      options.gas = Math.round((await method.estimateGas(options)) * 1.1);
+    } catch (e) {
+      throw new Error('Revert: ' + JSON.stringify(options))
+    }
 
-    options = {
-      ...options,
-      data: encodedABI,
-      to: contractAddress
-    };
     return this.httpWeb3.eth.accounts.signTransaction(options, privateKey, false);
   }
 

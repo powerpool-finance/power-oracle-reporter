@@ -41,6 +41,18 @@ const utils = {
 
     gweiToWei(gwei) {
         return web3Utils.toWei(utils.normalizeNumber(gwei).toFixed(9), 'gwei');
+    },
+
+    tgClear(text) {
+        return utils.clearHome(utils.clearTags(text));
+    },
+
+    clearTags(text) {
+        return text.replace(/<|>/g, '');
+    },
+
+    clearHome(text) {
+        return text.replace(/\/home\/[^\/]+\//g, '');
     }
 };
 
