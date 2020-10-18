@@ -69,21 +69,30 @@ class PowerOracleApp implements IPowerOracleApp {
     }
 
     handleError(error) {
-        console.error(error);
+        console.error('handleError', error);
         const stackArr = error.stack.split("\n");
         let appStack = stackArr
             .filter(stackStr => !_.includes(stackStr, 'node_modules')  && !_.includes(stackStr, error.message))
             .map(stackStr => _.trim(stackStr, " "))
             .join("\n");
         // console.log('error.stack.split("\\n")', error.stack.split("\n"));
-        return this.tgBot.sendMessageToAdmin(`Error in bot:\n\n<pre>${utils.tgClear(error.message)}</pre>\n\n<pre>${utils.tgClear(appStack)}</pre>`)
+        return this.tgBot.sendMessageToAdmin(`❌  Error in bot:\n\n<pre>${utils.tgClear(error.message)}</pre>\n\n<pre>${utils.tgClear(appStack)}</pre>`)
     }
 
     async handleTx(hash) {
+       await this.powerOracleWeb3.parseTxData(hash).then(parsedTx => {
+            if(!parsedTx) {
+                return;
+            }
+            return this.tgBot.sendMessageToAdmin(`↗️ Tx sent ${this.powerOracleWeb3.getTxLink(hash)}\n\n✏️ Action: <code>${parsedTx.methodName}</code>`);
+        }).catch((e) => {
+            console.error('handleTx', hash, e);
+       });
+
         if(config.warnBalanceLowerThan) {
             const ethBalance = await this.powerOracleWeb3.getEthBalance(this.powerOracleWeb3.getCurrentPokerAddress());
             if(ethBalance <= config.warnBalanceLowerThan) {
-                await this.tgBot.sendMessageToAdmin(`Low balance:\n<code>${ethBalance}</code> ETH`);
+                await this.tgBot.sendMessageToAdmin(`⚠️ Low balance:\n<code>${ethBalance}</code> ETH`);
             }
         }
     }

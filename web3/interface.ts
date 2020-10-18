@@ -26,4 +26,9 @@ export interface IPowerOracleWeb3 {
 
   onError(callback);
   onTransaction(callback);
+
+  parseTxData(txHash): Promise<any>;
+
+  getTxLink(txHash): string;
+  getAddressLink(txHash): string;
 }

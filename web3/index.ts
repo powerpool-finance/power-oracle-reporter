@@ -295,17 +295,28 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return new Promise((resolve, reject) => {
       this.activeTxTimestamp = this.getTimestamp();
 
-      const response = this.httpWeb3.eth.sendSignedTransaction(signedTx.rawTransaction, (err, hash) => {
+      const response = this.httpWeb3.eth.sendSignedTransaction(signedTx.rawTransaction, async (err, hash) => {
         if(err && _.includes(err.message, "Transaction gas price")) {
           return resolve(this.sendMethod(contract, methodName, args, fromPrivateKey, nonce, gasPriceMul * 1.3));
+        } else if(err && _.includes(err.message, "Insufficient funds")) {
+          this.activeTxTimestamp = null;
+          console.log('❌ Error', err.message);
+          return reject(new Error('Insufficient ETH funds. Current balance: ' + (await this.getEthBalance(from)) + ' ETH'));
         } else if(err) {
-          // if(_.includes(err.message, "Insufficient funds"))
           this.activeTxTimestamp = null;
           console.log('❌ Error', err.message);
           return reject(err);
         }
         this.activeTxTimestamp = null;
         console.log('✅ Sent', hash);
+
+        try {
+          await this.waitForTransactionConfirmed(hash);
+        } catch (e) {
+          this.activeTxTimestamp = null;
+          console.log('waitForTransactionConfirmed Error', e);
+          return reject(new Error('Sent transaction not found: ' + hash));
+        }
 
         if(this.transactionCallback) {
           this.transactionCallback(hash);
@@ -350,6 +361,8 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       return 'not_found';
     }
 
+    // console.log('getTransactionStatus', response);
+
     const txBlockNumber = response.blockNumber;
     if(!response.status) {
       return 'reverted';
@@ -363,7 +376,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return 'pending';
   }
 
-  async waitForTransactionConfirmed(txHash) {
+  waitForTransactionConfirmed(txHash) {
     return new Promise((resolve, reject) => {
       let iterations = 0;
       const interval = setInterval(async () => {
@@ -372,12 +385,101 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
           return reject();
         }
         const status = await this.getTransactionStatus(txHash);
-        if(_.includes(['confirmed', 'reverted'])) {
+        if(_.includes(['confirmed', 'reverted'], status)) {
           clearInterval(interval);
           resolve(status);
         }
       }, 5 * 1000);
     });
+  }
+
+  async parseData(data) {
+    const methodSignature = data.slice(0, 10);
+    if (methodSignature === '0x00000000') {
+      return null;
+    }
+
+    let abiMethod;
+    _.some(this.contractsConfig, (value, name) => {
+      if(!_.includes(name, 'Abi')) {
+        return false;
+      }
+      abiMethod = _.find(value, (abiMethod) => {
+        let abiSignature = abiMethod.signature;
+        if (abiMethod.type === 'fallback') {
+          return false;
+        }
+        if (!abiSignature) {
+          try {
+            abiSignature = this.httpWeb3.eth.abi.encodeFunctionSignature(abiMethod);
+          } catch (e) {}
+        }
+        return abiSignature && abiSignature === methodSignature;
+      });
+      return !!abiMethod;
+    });
+
+    if(!abiMethod) {
+      return null;
+    }
+
+    const methodName = abiMethod.name;
+
+    let decoded = {};
+    if (data.slice(10)) {
+      decoded = this.httpWeb3.eth.abi.decodeParameters(abiMethod.inputs, '0x' + data.slice(10));
+    }
+
+    const values = {};
+
+    abiMethod.inputs.forEach((inputAbi) => {
+      let {name} = inputAbi;
+      let value = decoded[name];
+      name = _.trim(name, '-_');
+
+      let decimals = 0;
+      let number;
+      if(_.includes(inputAbi.type, 'int256[')) {
+        number = value[0];
+      } else if(_.includes(inputAbi.type, 'int256')) {
+        number = value;
+      }
+
+      if(number && utils.greaterThenDecimals(number, 14)) {
+        decimals = 18;
+      } else if(number && utils.greaterThenDecimals(number, 3)) {
+        decimals = 6;
+      }
+
+      if(number && decimals) {
+        values[name] = utils.weiToNumber(number, decimals);
+      } else {
+        values[name] = value;
+      }
+    });
+
+    return {
+      methodName,
+      values,
+    };
+  }
+
+  async parseTxData(txHash) {
+    try {
+      const {input: data} = await this.httpWeb3.eth.getTransaction(txHash);
+      return this.parseData(data);
+    } catch (e) {
+      console.error('parseTxData', txHash, e);
+      return null;
+    }
+  }
+
+  getTxLink(txHash) {
+    return utils.txLink(this.contractsConfig.explorerTxUrl, txHash);
+  }
+
+  getAddressLink(addressHash) {
+    return utils.txLink(this.contractsConfig.explorerAddressUrl, addressHash);
   }
 
   onError(callback) {

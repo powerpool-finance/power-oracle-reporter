@@ -12,7 +12,9 @@
 export {};
 
 const ethers = require('ethers');
+const _ = require('lodash');
 const web3Utils = require('web3-utils');
+const {toBN} = web3Utils;
 
 const utils = {
     getAddressByPrivateKey(privateKey) {
@@ -43,6 +45,37 @@ const utils = {
         return web3Utils.toWei(utils.normalizeNumber(gwei).toFixed(9), 'gwei');
     },
 
+    greaterThenDecimals(n, d) {
+        return toBN(n.toString(10), 10).gt(toBN((10 ** d).toString(10), 10));
+    },
+
+    weiToNumber(wei, d) {
+        const zero = toBN(0);
+        const negative1 = toBN(-1);
+
+        const negative = toBN(wei.toString(10), 10).lt(zero);
+        const bLength = (10 ** d).toString().length - 1 || 1;
+        const dBN = toBN((10 ** d).toString(10), 10);
+
+        if (negative) {
+            wei = toBN(wei.toString(10), 10).mul(negative1);
+        }
+
+        let f = toBN(wei.toString(10), 10).mod(dBN).toString(10);
+        while (f.length < bLength) {
+            f = '0' + f;
+        }
+
+        f = f.match(/^([0-9]*[1-9]|0)(0*)/)[1];
+        const whole = toBN(wei.toString(10), 10).div(dBN).toString(10);
+
+        let v = '' + whole + (f == '0' ? '' : '.' + f);
+        if (negative) {
+            v = '-' + v;
+        }
+        return parseFloat(_.trim(v, '.'));
+    },
+
     tgClear(text) {
         return utils.clearHome(utils.clearTags(text));
     },
@@ -53,6 +86,13 @@ const utils = {
 
     clearHome(text) {
         return text.replace(/\/home\/[^\/]+\//g, '');
+    },
+
+    txLink(explorerTxUrl, txHash) {
+        return `<a href="${explorerTxUrl}${txHash}">${txHash.slice(0, 7) + "..." + txHash.slice(-4)}</a>`;
+    },
+    addressLink(explorerTxUrl, addressHash) {
+        return `<a href="${explorerTxUrl}${addressHash}">${addressHash.slice(0, 7) + "..." + addressHash.slice(-4)}</a>`;
     }
 };
 
