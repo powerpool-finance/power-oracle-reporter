@@ -17,6 +17,7 @@ MAINNET=1 POKER_PRIVATE_KEY=<Reporter private key e.g. 0x7700fa638003ef53c10485c
 ```
 yarn global add pm2 && pm2 install typescript
 MAINNET=1 POKER_PRIVATE_KEY=<Reporter private key e.g. 0x7700fa638003ef53c10485c0535353e9cf7e773cf64b3cfc7942662f8218e88b> pm2 start index.ts --name "power-oracle-reporter"
+pm2 save && sudo pm2 startup # add to startup
 ```
 
 # Telegram bot
