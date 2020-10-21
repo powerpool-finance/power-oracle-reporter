@@ -218,7 +218,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         return parseInt((await this.httpWeb3.eth.getGasPrice()).toString(10)) * 1.5;
       }
     } else {
-      return 1000000000;
+      return _.random(10, 17) * 1000000000;
     }
   }
 
