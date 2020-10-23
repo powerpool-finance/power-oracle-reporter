@@ -183,7 +183,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return prices.filter(p => {
       const delta = this.getTimestamp() - p.timestamp;
       return delta > minReportInterval;
-    }).map(p => p.token.symbol);//.filter(s => s !== 'ETH' && s !== 'USDC' && s !== 'USDT');
+    }).map(p => p.token.symbol.replace('WETH', 'ETH'));//.filter(s => s !== 'ETH' && s !== 'USDC' && s !== 'USDT');
   }
 
   async getSymbolsForSlash() {
@@ -194,7 +194,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return prices.filter(p => {
       const delta = this.getTimestamp() - p.timestamp;
       return delta > maxReportInterval;
-    }).map(p => p.token.symbol);//.filter(s => s !== 'ETH' && s !== 'USDC' && s !== 'USDT');
+    }).map(p => p.token.symbol.replace('WETH', 'ETH'));//.filter(s => s !== 'ETH' && s !== 'USDC' && s !== 'USDT');
   }
 
   async getNetworkId() {
