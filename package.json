@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "start": "./node_modules/.bin/ts-node ./index.ts"
+    "start": "./node_modules/.bin/ts-node ./index.ts",
+    "upgrade": "git pull && yarn && pm2 restart \"power-oracle-reporter\""
   },
   "author": "",
   "license": "MIT",
