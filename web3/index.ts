@@ -175,15 +175,19 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return {minReportInterval, maxReportInterval};
   }
 
+  processSymbols(symbols) {
+    return symbols.filter(s => s !== 'WETH' && s !== 'CVP' && s !== 'ETH');
+  }
+
   async getSymbolForReport() {
     const [{minReportInterval}, prices] = await Promise.all([
       this.getReportIntervals(),
       this.getTokenPrices(),
     ]);
-    return prices.filter(p => {
+    return this.processSymbols(prices.filter(p => {
       const delta = this.getTimestamp() - p.timestamp;
       return delta > minReportInterval;
-    }).map(p => p.token.symbol.replace('WETH', 'ETH'));//.filter(s => s !== 'ETH' && s !== 'USDC' && s !== 'USDT');
+    }).map(p => p.token.symbol));
   }
 
   async getSymbolsForSlash() {
@@ -191,10 +195,10 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       this.getReportIntervals(),
       this.getTokenPrices(),
     ]);
-    return prices.filter(p => {
+    return this.processSymbols(prices.filter(p => {
       const delta = this.getTimestamp() - p.timestamp;
       return delta > maxReportInterval;
-    }).map(p => p.token.symbol.replace('WETH', 'ETH'));//.filter(s => s !== 'ETH' && s !== 'USDC' && s !== 'USDT');
+    }).map(p => p.token.symbol));
   }
 
   async getNetworkId() {
