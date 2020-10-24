@@ -175,8 +175,8 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return {minReportInterval, maxReportInterval};
   }
 
-  processSymbols(symbols) {
-    return symbols.filter(s => s !== 'WETH' && s !== 'CVP' && s !== 'ETH');
+  processSymbols(symbols, filterSymbols = ['CVP', 'WETH', 'ETH']) {
+    return symbols.filter(s => !_.includes(filterSymbols, s));
   }
 
   async getSymbolForReport() {
@@ -198,7 +198,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return this.processSymbols(prices.filter(p => {
       const delta = this.getTimestamp() - p.timestamp;
       return delta > maxReportInterval;
-    }).map(p => p.token.symbol));
+    }).map(p => p.token.symbol), ['WETH', 'ETH']);
   }
 
   async getNetworkId() {
@@ -276,6 +276,16 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         this.httpOracleContract,
         'pokeFromReporter',
         [this.currentUserId, symbols],
+        config.poker.privateKey
+    );
+  }
+
+  async poke(symbols) {
+    console.log('poke', symbols);
+    return this.sendMethod(
+        this.httpOracleContract,
+        'poke',
+        [symbols],
         config.poker.privateKey
     );
   }
