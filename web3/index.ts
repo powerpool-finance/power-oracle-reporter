@@ -185,7 +185,8 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   processSymbols(symbols, filterSymbols = ['CVP', 'WETH', 'ETH']) {
-    return symbols.filter(s => !_.includes(filterSymbols, s));
+    //TODO: use filterSymbols after contracts upgrade
+    return symbols.map(s => s.replace('WETH', 'ETH'));
   }
 
   async getSymbolForReport() {
