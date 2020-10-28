@@ -31,7 +31,7 @@ class PowerOracleTgBot implements IPowerOracleTgBot {
         if(!this.isReady()) {
             return;
         }
-        this.bot = new telegramBot(config.botKey, {filepath: false});
+        this.bot = new telegramBot(config.botKey, {filepath: false, polling: true});
         this.bot.onText(/\/start/, (msg) => {
             const chatId = msg.chat.id;
             this.bot.sendMessage(chatId, "Hello, this is a PowerPool oracle bot!", {parse_mode: 'HTML', disable_web_page_preview: true});
@@ -50,7 +50,11 @@ class PowerOracleTgBot implements IPowerOracleTgBot {
         }
         console.log('sendMessageToAdmin', this.adminIds, messageText);
         this.adminIds.forEach(adminId => {
-            return this.bot.sendMessage(adminId, messageText, {parse_mode: 'HTML', disable_web_page_preview: true});
+            try {
+                return this.bot.sendMessage(adminId, messageText, {parse_mode: 'HTML', disable_web_page_preview: true});
+            } catch (e) {
+                console.error('sendMessage to', adminId, 'error', e);
+            }
         });
     }
 }
