@@ -23,6 +23,7 @@ module.exports = async () => {
 
 class PowerOracleTgBot implements IPowerOracleTgBot {
     bot;
+    adminIds;
 
     constructor() {}
 
@@ -35,6 +36,8 @@ class PowerOracleTgBot implements IPowerOracleTgBot {
             const chatId = msg.chat.id;
             this.bot.sendMessage(chatId, "Hello, this is a PowerPool oracle bot!", {parse_mode: 'HTML', disable_web_page_preview: true});
         });
+
+        this.adminIds = config.adminId.toString().split(/, */g);
     }
 
     isReady() {
@@ -45,7 +48,9 @@ class PowerOracleTgBot implements IPowerOracleTgBot {
         if(!this.isReady()) {
             return;
         }
-        console.log('sendMessageToAdmin', messageText);
-        return this.bot.sendMessage(config.adminId, messageText, {parse_mode: 'HTML', disable_web_page_preview: true});
+        console.log('sendMessageToAdmin', this.adminIds, messageText);
+        this.adminIds.forEach(adminId => {
+            return this.bot.sendMessage(adminId, messageText, {parse_mode: 'HTML', disable_web_page_preview: true});
+        });
     }
 }

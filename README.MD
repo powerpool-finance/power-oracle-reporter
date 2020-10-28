@@ -27,7 +27,7 @@ Use a telegram bot to receive information about a change in your status (Price R
 1. Go to https://t.me/BotFather and create a new bot with any name. It will be your bot
 2. Copy access token and paste to TG_KEY argument
 3. Get your telegram user id. You can google how to get it or use one of the popular bots: https://t.me/myTelergamIdBot, https://t.me/userinfobot
-4. Paste your telegram user id to the TG_ADMIN argument
+4. Paste your telegram user id to the TG_ADMIN argument. You can specify several admins separated by comma.
 5. As a result, your command for running the bot will look like this:
 ```
 TG_KEY=1112233444:AAEV2fJbf1ba-vbftCP-knd2dg0t3wq-gya TG_ADMIN=555444333 MAINNET=1 POKER_PRIVATE_KEY=0x7700fa638003ef53c10485c0535353e9cf7e773cf64b3cfc7942662f8218e88b npm start
