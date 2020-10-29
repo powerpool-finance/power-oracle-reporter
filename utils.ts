@@ -37,12 +37,24 @@ const utils = {
         return web3Utils.keccak256(str);
     },
 
-    weiToEther(wei) {
-        return parseFloat(web3Utils.fromWei(wei, 'ether'));
+    roundNumber(value, roundTo) {
+        return Math.round(value * 10 ** roundTo) / 10 ** roundTo;
+    },
+
+    weiToEther(wei, roundTo = null) {
+        const result = parseFloat(web3Utils.fromWei(wei, 'ether'));
+        return roundTo ? utils.roundNumber(result, roundTo) : result;
     },
 
     gweiToWei(gwei) {
         return web3Utils.toWei(utils.normalizeNumber(gwei).toFixed(9), 'gwei');
+    },
+
+    mul(a, b) {
+        return toBN(a.toString(10), 10).mul(toBN(b.toString(10), 10)).toString(10);
+    },
+    add(a, b) {
+        return toBN(a.toString(10), 10).add(toBN(b.toString(10), 10)).toString(10);
     },
 
     greaterThenDecimals(n, d) {

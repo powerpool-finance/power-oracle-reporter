@@ -10,26 +10,11 @@
  *           wrr ww0rrrr
  */
 
-export interface IPowerOracleWeb3 {
-  currentUserId: number;
+export interface IPowerOracleStorage {
+    getValue(key): Promise<string>;
+    setValue(key, value): Promise<any>;
 
-  getCurrentPokerAddress(): string;
-  getTimestamp(): number;
-  getDelayUntilNewTransaction(): number;
-  activeTxTimestamp: number;
-
-  isCurrentAccountReporter(): Promise<boolean>;
-  checkAndActionAsSlasher(): Promise<any>;
-  checkAndActionAsReporter(): Promise<any>;
-
-  getEthBalance(userAddress): Promise<number>;
-  getPendingReward(): Promise<number>;
-
-  onError(callback);
-  onTransaction(callback);
-
-  parseTxData(txHash): Promise<any>;
-
-  getTxLink(txHash): string;
-  getAddressLink(txHash): string;
+    increaseFloatValue(key, value): Promise<string>;
+    increaseBnValue(key, value): Promise<string>;
 }
+

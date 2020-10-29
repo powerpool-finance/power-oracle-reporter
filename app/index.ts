@@ -13,13 +13,14 @@
 import {IPowerOracleWeb3} from "../web3/interface";
 import {IPowerOracleTgBot} from "../tgBot/interface";
 import {IPowerOracleApp} from "./interface";
+import {IPowerOracleStorage} from "../storage/interface";
 
 const _ = require('lodash');
 const config = require('./config');
 const utils = require('../utils');
 
-module.exports = async (web3, tgBot) => {
-    const app = new PowerOracleApp(web3, tgBot);
+module.exports = async (web3, storage, tgBot) => {
+    const app = new PowerOracleApp(web3, storage, tgBot);
     app.init();
     require('./cron')(app);
     return app;
@@ -33,10 +34,12 @@ module.exports = async (web3, tgBot) => {
 
 class PowerOracleApp implements IPowerOracleApp {
     powerOracleWeb3: IPowerOracleWeb3;
+    storage: IPowerOracleStorage;
     tgBot: IPowerOracleTgBot;
 
-    constructor(web3, tgBot) {
+    constructor(web3, storage, tgBot) {
         this.powerOracleWeb3 = web3;
+        this.storage = storage;
         this.tgBot = tgBot;
     }
 
@@ -79,15 +82,50 @@ class PowerOracleApp implements IPowerOracleApp {
         return this.tgBot.sendMessageToAdmin(`❌  Error in bot:\n\n<pre>${utils.tgClear(error.message)}</pre>\n\n<pre>${utils.tgClear(appStack)}</pre>`)
     }
 
-    async handleTx(hash) {
-       await this.powerOracleWeb3.parseTxData(hash).then(parsedTx => {
+    async messageAboutNewTx(hash) {
+        await this.powerOracleWeb3.parseTxData(hash).then(async parsedTx => {
             if(!parsedTx) {
                 return;
             }
-            return this.tgBot.sendMessageToAdmin(`↗️ Tx sent ${this.powerOracleWeb3.getTxLink(hash)}\n\n✏️ Action: <code>${parsedTx.methodName}</code>`);
+            let prefix;
+            if (parsedTx.status === 'confirmed') {
+                prefix = `↗️ Tx sent`;
+            } else if(parsedTx.status === 'confirmed') {
+                prefix = `❗️ Tx reverted`;
+            } else if(parsedTx.status === 'pending') {
+                prefix = `🚼 Tx pending`;
+            } else if(parsedTx.status === 'not_found') {
+                return this.tgBot.sendMessageToAdmin(`🛑 Tx not found ${this.powerOracleWeb3.getTxLink(hash)}`);
+            }
+
+            let footer = '';
+            if (parsedTx.ethSpent && parsedTx.weiSpent) {
+                const totalWeiSpent = await this.storage.increaseBnValue('wei_spent', parsedTx.weiSpent);
+                footer += `\nETH spent: <code>${utils.roundNumber(parsedTx.ethSpent, 4)}</code> / <code>${utils.weiToEther(totalWeiSpent, 4)}</code> ETH`;
+            }
+            const rewardEvents = parsedTx.events.filter(e => e.name === 'RewardUserReport' || e.name === 'RewardUserSlasherUpdate');
+            rewardEvents.forEach(event => {
+                footer += event.name === 'RewardUserReport' ? `\nPrice report reward:` : `\nSlasher update reward:`;
+                footer += ` <code>${utils.roundNumber(event.values.calculatedReward, 2)}</code> CVP`;
+            });
+
+            const totalReward = utils.roundNumber(await this.powerOracleWeb3.getPendingReward(), 2);
+            footer += `\nPending reward: <code>${totalReward}</code> CVP`;
+
+            return this.tgBot.sendMessageToAdmin(
+                `${prefix} ${this.powerOracleWeb3.getTxLink(hash)}\n\n✏️ Action: <code>${parsedTx.methodName}</code>`
+                + (footer ? ('\n' + footer) : '')
+            );
+
         }).catch((e) => {
             console.error('handleTx', hash, e);
-       });
+        });
+    }
+
+    async handleTx(hash) {
+        await this.messageAboutNewTx(hash).catch(e => {
+            console.error('messageAboutNewTx', e);
+        })
 
         if(config.warnBalanceLowerThan) {
             const ethBalance = await this.powerOracleWeb3.getEthBalance(this.powerOracleWeb3.getCurrentPokerAddress());

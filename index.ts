@@ -13,11 +13,13 @@
 import {IPowerOracleApp} from "./app/interface";
 import {IPowerOracleWeb3} from "./web3/interface";
 import {IPowerOracleTgBot} from "./tgBot/interface";
+import {IPowerOracleStorage} from "./storage/interface";
 
 (async() => {
+    const powerOracleStorage: IPowerOracleStorage = await require('./storage')();
     const powerOracleWeb3: IPowerOracleWeb3 = await require('./web3')();
     const tgBot: IPowerOracleTgBot = await require('./tgBot')();
-    const app: IPowerOracleApp = await require('./app')(powerOracleWeb3, tgBot);
+    const app: IPowerOracleApp = await require('./app')(powerOracleWeb3, powerOracleStorage, tgBot);
 })().catch((e) => {
     console.error('app error', new Date(), e);
 });
