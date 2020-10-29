@@ -180,12 +180,20 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return this.getTimestamp() - tokenPrice.timestamp;
   }
 
+  async getLastSlasherUpdate(userId) {
+    return this.httpOracleContract.methods.lastSlasherUpdates(userId).call()
+        .then(slasherUpdate => utils.normalizeNumber(slasherUpdate));
+  }
+
   async getReportIntervals() {
     const [minReportInterval, maxReportInterval] = await Promise.all([
       this.httpOracleContract.methods.minReportInterval().call(),
       this.httpOracleContract.methods.maxReportInterval().call(),
     ])
-    return {minReportInterval, maxReportInterval};
+    return {
+      minReportInterval: utils.normalizeNumber(minReportInterval),
+      maxReportInterval: utils.normalizeNumber(maxReportInterval)
+    };
   }
 
   processSymbols(symbols, filterSymbols = ['CVP', 'WETH', 'ETH']) {
@@ -249,20 +257,27 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async checkAndActionAsSlasher() {
+    const timestamp = utils.getTimestamp();
     console.log('checkAndActionAsSlasher', this.currentUserId, await this.getActualReporterUserId());
-    const [curUser, reporterUser] = await Promise.all([
+    const [curUser, reporterUser, lastSlasherUpdate, {minReportInterval, maxReportInterval}] = await Promise.all([
         this.getUserById(this.currentUserId),
-        this.getUserById(await this.getActualReporterUserId())
+        this.getUserById(await this.getActualReporterUserId()),
+        this.getLastSlasherUpdate(this.currentUserId),
+        this.getReportIntervals()
     ]);
+    const intervalsDiff = maxReportInterval - minReportInterval;
     console.log('curUser.deposit', curUser.deposit, 'reporterUser.deposit', reporterUser.deposit);
     if(curUser.deposit > reporterUser.deposit) {
       return this.setReporter();
     }
     const symbolToSlash = await this.getSymbolsForSlash();
-    if(!symbolToSlash.length) {
-      return;
+    if(symbolToSlash.length) {
+      if(timestamp > intervalsDiff + lastSlasherUpdate) {
+        return this.pokeFromSlasher(symbolToSlash);
+      }
+    } else if(timestamp > maxReportInterval + lastSlasherUpdate) {
+      return this.slasherUpdate();
     }
-    return this.pokeFromSlasher(symbolToSlash);
   }
 
   async checkAndActionAsReporter() {
@@ -304,6 +319,16 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     );
   }
 
+  async slasherUpdate() {
+    console.log('slasherUpdate');
+    return this.sendMethod(
+        this.httpOracleContract,
+        'slasherUpdate',
+        [this.currentUserId],
+        config.poker.privateKey
+    );
+  }
+
   async setReporter() {
     console.log('setReporter');
     return this.sendMethod(
@@ -335,7 +360,6 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
           console.log('❌ Error', err.message);
           return reject(err);
         }
-        this.activeTxTimestamp = null;
         console.log('✅ Sent', hash);
 
         try {
@@ -345,6 +369,8 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
           console.log('waitForTransactionConfirmed Error', e);
           return reject(new Error('Sent transaction not found: ' + hash));
         }
+
+        this.activeTxTimestamp = null;
 
         if(this.transactionCallback) {
           this.transactionCallback(hash);

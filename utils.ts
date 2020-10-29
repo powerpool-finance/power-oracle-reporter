@@ -50,6 +50,10 @@ const utils = {
         return web3Utils.toWei(utils.normalizeNumber(gwei).toFixed(9), 'gwei');
     },
 
+    getTimestamp() {
+        return Math.floor(new Date().getTime() / 1000);
+    },
+
     mul(a, b) {
         return toBN(a.toString(10), 10).mul(toBN(b.toString(10), 10)).toString(10);
     },
