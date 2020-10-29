@@ -73,13 +73,16 @@ class PowerOracleApp implements IPowerOracleApp {
 
     handleError(error) {
         console.error('handleError', error);
+        if(error && error.message && _.includes(error.message, 'Invalid JSON RPC')) {
+            return this.tgBot.sendMessageToAdmin(`⚠️ Data fetching error: RPC endpoint Time-out\n\nWe recommend to place more reliable Ethereum RPC endpoint to <code>RPC_SERVER</code> variable in bot starting command if this error appears too often.`);
+        }
         const stackArr = error.stack.split("\n");
         let appStack = stackArr
             .filter(stackStr => !_.includes(stackStr, 'node_modules')  && !_.includes(stackStr, error.message))
             .map(stackStr => _.trim(stackStr, " "))
             .join("\n");
         // console.log('error.stack.split("\\n")', error.stack.split("\n"));
-        return this.tgBot.sendMessageToAdmin(`❌  Error in bot:\n\n<pre>${utils.tgClear(error.message)}</pre>\n\n<pre>${utils.tgClear(appStack)}</pre>`)
+        return this.tgBot.sendMessageToAdmin(`❌  Error in bot:\n\n<pre>${utils.tgClear(error.message)}</pre>\n\n<pre>${utils.tgClear(appStack)}</pre>`);
     }
 
     async messageAboutNewTx(hash) {
@@ -90,7 +93,7 @@ class PowerOracleApp implements IPowerOracleApp {
             let prefix;
             if (parsedTx.status === 'confirmed') {
                 prefix = `↗️ Tx sent`;
-            } else if(parsedTx.status === 'confirmed') {
+            } else if(parsedTx.status === 'reverted') {
                 prefix = `❗️ Tx reverted`;
             } else if(parsedTx.status === 'pending') {
                 prefix = `🚼 Tx pending`;
@@ -102,6 +105,8 @@ class PowerOracleApp implements IPowerOracleApp {
             if (parsedTx.ethSpent && parsedTx.weiSpent) {
                 const totalWeiSpent = await this.storage.increaseBnValue('wei_spent', parsedTx.weiSpent);
                 footer += `\nETH spent: <code>${utils.roundNumber(parsedTx.ethSpent, 4)}</code> / <code>${utils.weiToEther(totalWeiSpent, 4)}</code> ETH`;
+                const ethBalance = await this.powerOracleWeb3.getEthBalance(this.powerOracleWeb3.getCurrentPokerAddress());
+                footer += `\nETH balance: <code>${utils.roundNumber(ethBalance, 4)}</code> ETH\n`;
             }
             const rewardEvents = parsedTx.events.filter(e => e.name === 'RewardUserReport' || e.name === 'RewardUserSlasherUpdate');
             rewardEvents.forEach(event => {
@@ -122,16 +127,20 @@ class PowerOracleApp implements IPowerOracleApp {
         });
     }
 
+    async messageAboutLowBalance() {
+        const ethBalance = await this.powerOracleWeb3.getEthBalance(this.powerOracleWeb3.getCurrentPokerAddress());
+        if(ethBalance <= config.warnBalanceLowerThan) {
+            await this.tgBot.sendMessageToAdmin(`⚠️ Low balance: <code>${ethBalance}</code> ETH\n\nReporter address: <code>${this.powerOracleWeb3.getCurrentPokerAddress()}</code>`);
+        }
+    }
+
     async handleTx(hash) {
         await this.messageAboutNewTx(hash).catch(e => {
             console.error('messageAboutNewTx', e);
         })
 
         if(config.warnBalanceLowerThan) {
-            const ethBalance = await this.powerOracleWeb3.getEthBalance(this.powerOracleWeb3.getCurrentPokerAddress());
-            if(ethBalance <= config.warnBalanceLowerThan) {
-                await this.tgBot.sendMessageToAdmin(`⚠️ Low balance:\n<code>${ethBalance}</code> ETH`);
-            }
+            await this.messageAboutLowBalance();
         }
     }
 }
