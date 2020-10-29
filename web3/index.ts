@@ -177,7 +177,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   async getDeltaUntilReportByTokenIndex(index) {
     const token = await this.getTokenByIndex(index);
     const tokenPrice = await this.getTokenPriceBySymbolHash(token.symbolHash);
-    return this.getTimestamp() - tokenPrice.timestamp;
+    return (await this.getTimestamp()) - tokenPrice.timestamp;
   }
 
   async getLastSlasherUpdate(userId) {
@@ -206,8 +206,9 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       this.getReportIntervals(),
       this.getTokenPrices(),
     ]);
+    const timestamp = await this.getTimestamp();
     return this.processSymbols(prices.filter(p => {
-      const delta = this.getTimestamp() - p.timestamp;
+      const delta = timestamp - p.timestamp;
       return delta > minReportInterval;
     }).map(p => p.token.symbol));
   }
@@ -217,8 +218,9 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       this.getReportIntervals(),
       this.getTokenPrices(),
     ]);
+    const timestamp = await this.getTimestamp();
     return this.processSymbols(prices.filter(p => {
-      const delta = this.getTimestamp() - p.timestamp;
+      const delta = timestamp - p.timestamp;
       return delta > maxReportInterval;
     }).map(p => p.token.symbol), ['WETH', 'ETH']);
   }
@@ -231,8 +233,12 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return utils.weiToEther(await this.httpWeb3.eth.getBalance(userAddress));
   }
 
-  getTimestamp() {
-    return Math.floor(new Date().getTime() / 1000);
+  async getTimestamp() {
+    return utils.normalizeNumber((await this.httpWeb3.eth.getBlock(await this.getCurrentBlock())).timestamp);
+  }
+
+  async getCurrentBlock() {
+    return utils.normalizeNumber(await this.httpWeb3.eth.getBlockNumber());
   }
 
   async getGasPrice() {
@@ -257,7 +263,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async checkAndActionAsSlasher() {
-    const timestamp = utils.getTimestamp();
+    const timestamp = await this.getTimestamp();
     console.log('checkAndActionAsSlasher', this.currentUserId, await this.getActualReporterUserId());
     const [curUser, reporterUser, lastSlasherUpdate, {minReportInterval, maxReportInterval}] = await Promise.all([
         this.getUserById(this.currentUserId),
@@ -345,8 +351,8 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     const from = utils.getAddressByPrivateKey(fromPrivateKey);
     const signedTx = await this.getTransaction(method, contractAddress, from, fromPrivateKey, nonce, gasPriceMul);
 
-    return new Promise((resolve, reject) => {
-      this.activeTxTimestamp = this.getTimestamp();
+    return new Promise(async (resolve, reject) => {
+      this.activeTxTimestamp = await this.getTimestamp();
 
       const response = this.httpWeb3.eth.sendSignedTransaction(signedTx.rawTransaction, async (err, hash) => {
         if(err && _.includes(err.message, "Transaction gas price")) {
@@ -426,7 +432,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       return 'reverted';
     }
 
-    const currentBlock = utils.normalizeNumber(await this.httpWeb3.eth.getBlockNumber());
+    const currentBlock = await this.getCurrentBlock();
     const confirmations = currentBlock - txBlockNumber;
     if (confirmations >= this.requiredConfirmations) {
       return 'confirmed';

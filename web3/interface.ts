@@ -14,7 +14,7 @@ export interface IPowerOracleWeb3 {
   currentUserId: number;
 
   getCurrentPokerAddress(): string;
-  getTimestamp(): number;
+  getTimestamp(): Promise<number>;
   getDelayUntilNewTransaction(): number;
   activeTxTimestamp: number;
 

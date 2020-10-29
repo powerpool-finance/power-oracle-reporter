@@ -63,7 +63,7 @@ class PowerOracleApp implements IPowerOracleApp {
 
     async checkAndAction() {
         const poWeb3 = this.powerOracleWeb3;
-        const timestamp = poWeb3.getTimestamp();
+        const timestamp = await poWeb3.getTimestamp();
         console.log('checkAndAction', poWeb3.activeTxTimestamp, 'timestamp', timestamp, 'delay', poWeb3.getDelayUntilNewTransaction());
         if(poWeb3.activeTxTimestamp && timestamp - poWeb3.activeTxTimestamp < poWeb3.getDelayUntilNewTransaction()) {
             return;
