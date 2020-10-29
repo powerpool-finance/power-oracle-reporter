@@ -100,6 +100,10 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return utils.normalizeNumber(await this.httpOracleStackingContract.methods.getReporterId().call());
   }
 
+  async getPendingReward() {
+    return utils.weiToEther(await this.httpOracleContract.methods.rewards(this.currentUserId).call());
+  }
+
   async getUserIdByPokerAddress(pokerKey) {
     pokerKey = pokerKey.toLowerCase();
     const userCreated = await this.httpOracleStackingContract.getPastEvents('CreateUser', { fromBlock: 0, filter: { pokerKey } }).then(events => events[0]);
@@ -406,15 +410,19 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async getTransactionStatus(txHash) {
-    const response = await this.httpWeb3.eth.getTransactionReceipt(txHash);
-    if (!response) {
+    return this.getTransactionStatusByReceipt(await this.httpWeb3.eth.getTransactionReceipt(txHash));
+  }
+
+
+  async getTransactionStatusByReceipt(receipt) {
+    if (!receipt) {
       return 'not_found';
     }
 
-    // console.log('getTransactionStatus', response);
+    // console.log('getTransactionStatus', receipt);
 
-    const txBlockNumber = response.blockNumber;
-    if(!response.status) {
+    const txBlockNumber = receipt.blockNumber;
+    if(!receipt.status) {
       return 'reverted';
     }
 
@@ -443,12 +451,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     });
   }
 
-  async parseData(data) {
-    const methodSignature = data.slice(0, 10);
-    if (methodSignature === '0x00000000') {
-      return null;
-    }
-
+  findAbiItemBySignature(signature) {
     let abiMethod;
     _.some(this.contractsConfig, (value, name) => {
       if(!_.includes(name, 'Abi')) {
@@ -464,25 +467,17 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
             abiSignature = this.httpWeb3.eth.abi.encodeFunctionSignature(abiMethod);
           } catch (e) {}
         }
-        return abiSignature && abiSignature === methodSignature;
+        return abiSignature && abiSignature === signature;
       });
       return !!abiMethod;
     });
+    return abiMethod;
+  }
 
-    if(!abiMethod) {
-      return null;
-    }
-
-    const methodName = abiMethod.name;
-
-    let decoded = {};
-    if (data.slice(10)) {
-      decoded = this.httpWeb3.eth.abi.decodeParameters(abiMethod.inputs, '0x' + data.slice(10));
-    }
-
+  convertValuesByInputs(inputs, decoded) {
     const values = {};
 
-    abiMethod.inputs.forEach((inputAbi) => {
+    inputs.forEach((inputAbi) => {
       let {name} = inputAbi;
       let value = decoded[name];
       name = _.trim(name, '-_');
@@ -507,6 +502,29 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         values[name] = value;
       }
     });
+    return values;
+  }
+
+  parseData(data) {
+    const methodSignature = data.slice(0, 10);
+    if (methodSignature === '0x00000000') {
+      return null;
+    }
+
+    let abiMethod = this.findAbiItemBySignature(methodSignature);
+
+    if(!abiMethod) {
+      return null;
+    }
+
+    const methodName = abiMethod.name;
+
+    let decoded = {};
+    if (data.slice(10)) {
+      decoded = this.httpWeb3.eth.abi.decodeParameters(abiMethod.inputs, '0x' + data.slice(10));
+    }
+
+    const values = this.convertValuesByInputs(abiMethod.inputs, decoded);
 
     return {
       methodName,
@@ -516,12 +534,49 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
 
   async parseTxData(txHash) {
     try {
-      const {input: data} = await this.httpWeb3.eth.getTransaction(txHash);
-      return this.parseData(data);
+      const [tx, receipt] = await Promise.all([
+          this.httpWeb3.eth.getTransaction(txHash),
+          this.httpWeb3.eth.getTransactionReceipt(txHash),
+      ]);
+      const status = await this.getTransactionStatusByReceipt(receipt);
+
+      const {input: data, gas, gasPrice} = tx;
+      const weiSpent = utils.mul(gas, gasPrice);
+      return {
+        ethSpent: utils.weiToEther(weiSpent),
+        weiSpent,
+        status,
+        events: this.parseLogs(receipt.logs),
+        ...this.parseData(data)
+      };
     } catch (e) {
       console.error('parseTxData', txHash, e);
       return null;
     }
+  }
+
+  parseLogs(logs) {
+    return logs.map((log) => {
+      let abiEvent = this.findAbiItemBySignature(log.topics[0]);
+      if (!abiEvent) {
+        return null;
+      }
+      const {inputs} = abiEvent;
+      const decoded = this.httpWeb3.eth.abi.decodeLog(inputs, log.data === '0x' ? null : log.data, log.topics.slice(1));
+      const values = this.convertValuesByInputs(inputs, decoded);
+      let name = abiEvent.name;
+      //TODO: remove after migration
+      if(name === 'RewardUser') {
+        name = 'RewardUserReport';
+      }
+      return {
+        name,
+        txHash: log.transactionHash,
+        signature: log.topics[0],
+        values,
+        inputs
+      }
+    })
   }
 
   getTxLink(txHash) {
