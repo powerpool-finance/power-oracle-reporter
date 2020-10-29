@@ -234,7 +234,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async getTimestamp() {
-    return utils.normalizeNumber((await this.httpWeb3.eth.getBlock(await this.getCurrentBlock())).timestamp);
+    return utils.normalizeNumber((await this.httpWeb3.eth.getBlock((await this.getCurrentBlock()) - 1)).timestamp);
   }
 
   async getCurrentBlock() {
