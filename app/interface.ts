@@ -13,5 +13,6 @@
 export interface IPowerOracleApp {
     checkAndActionSafe();
     checkAndAction();
+    messageAboutNewTx(hash);
 }
 
