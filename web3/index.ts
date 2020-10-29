@@ -379,7 +379,9 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         this.activeTxTimestamp = null;
 
         if(this.transactionCallback) {
-          this.transactionCallback(hash);
+          setTimeout(() => {
+            this.transactionCallback(hash);
+          }, 10 * 1000);
         }
 
         resolve({
