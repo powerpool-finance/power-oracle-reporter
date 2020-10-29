@@ -45,6 +45,10 @@ const utils = {
         return web3Utils.toWei(utils.normalizeNumber(gwei).toFixed(9), 'gwei');
     },
 
+    getTimestamp() {
+        return Math.floor(new Date().getTime() / 1000);
+    },
+
     greaterThenDecimals(n, d) {
         return toBN(n.toString(10), 10).gt(toBN((10 ** d).toString(10), 10));
     },
