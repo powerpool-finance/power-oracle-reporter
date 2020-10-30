@@ -207,8 +207,10 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       this.getTokenPrices(),
     ]);
     const timestamp = await this.getTimestamp();
+    console.log('getSymbolForReport timestamp', timestamp);
     return this.processSymbols(prices.filter(p => {
       const delta = timestamp - p.timestamp;
+      console.log('p.timestamp', p.timestamp, 'delta', delta);
       return delta > minReportInterval;
     }).map(p => p.token.symbol));
   }
@@ -234,7 +236,19 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async getTimestamp() {
-    return utils.normalizeNumber((await this.httpWeb3.eth.getBlock((await this.getCurrentBlock()) - 1)).timestamp);
+    const lastBlockNumber = (await this.getCurrentBlock()) - 1;
+    try {
+      return this.getBlockTimestamp(lastBlockNumber);
+    } catch (e) {
+      // trying again, it can be failed because of RPC servers balancers with several nodes
+      return new Promise((resolve) => {
+        setTimeout(() => resolve(this.getBlockTimestamp(lastBlockNumber)), 3000);
+      });
+    }
+  }
+
+  async getBlockTimestamp(blockNumber) {
+    return utils.normalizeNumber((await this.httpWeb3.eth.getBlock(blockNumber)).timestamp);
   }
 
   async getCurrentBlock() {
@@ -387,8 +401,6 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         resolve({
           hash: hash,
           promise: response,
-          // nonce: options.nonce,
-          // gasPrice: gasPrice
         });
       })
     })
@@ -426,8 +438,6 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     if (!receipt) {
       return 'not_found';
     }
-
-    // console.log('getTransactionStatus', receipt);
 
     const txBlockNumber = receipt.blockNumber;
     if(!receipt.status) {
@@ -573,10 +583,6 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       const decoded = this.httpWeb3.eth.abi.decodeLog(inputs, log.data === '0x' ? null : log.data, log.topics.slice(1));
       const values = this.convertValuesByInputs(inputs, decoded);
       let name = abiEvent.name;
-      //TODO: remove after migration
-      if(name === 'RewardUser') {
-        name = 'RewardUserReport';
-      }
       return {
         name,
         txHash: log.transactionHash,
