@@ -15,6 +15,7 @@ export interface IPowerOracleWeb3 {
 
   getCurrentPokerAddress(): string;
   getTimestamp(): Promise<number>;
+  getBlockTimestamp(blockNumber): Promise<number>;
   getDelayUntilNewTransaction(): number;
   activeTxTimestamp: number;
 

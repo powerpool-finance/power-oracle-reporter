@@ -237,6 +237,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
 
   async getTimestamp() {
     const lastBlockNumber = (await this.getCurrentBlock()) - 1;
+    console.log('getTimestamp lastBlockNumber', lastBlockNumber);
     try {
       return this.getBlockTimestamp(lastBlockNumber);
     } catch (e) {
