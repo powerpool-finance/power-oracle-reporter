@@ -197,8 +197,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   processSymbols(symbols, filterSymbols = ['CVP', 'WETH', 'ETH']) {
-    //TODO: use filterSymbols after contracts upgrade
-    return symbols.map(s => s.replace('WETH', 'ETH'));
+    return symbols.map(s => s.replace('WETH', 'ETH')).filter(s => !_.includes(filterSymbols, s));
   }
 
   async getSymbolForReport() {
@@ -224,7 +223,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return this.processSymbols(prices.filter(p => {
       const delta = timestamp - p.timestamp;
       return delta > maxReportInterval;
-    }).map(p => p.token.symbol), ['WETH', 'ETH']);
+    }).map(p => p.token.symbol));
   }
 
   async getNetworkId() {
