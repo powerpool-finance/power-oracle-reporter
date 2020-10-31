@@ -15,6 +15,9 @@ import {IPowerOracleWeb3} from "./web3/interface";
 import {IPowerOracleTgBot} from "./tgBot/interface";
 import {IPowerOracleStorage} from "./storage/interface";
 
+// https://github.com/yagop/node-telegram-bot-api/issues/319
+process.env.NTBA_FIX_319 = '1';
+
 (async() => {
     const powerOracleStorage: IPowerOracleStorage = await require('./storage')();
     const powerOracleWeb3: IPowerOracleWeb3 = await require('./web3')();
