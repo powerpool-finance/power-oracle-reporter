@@ -237,14 +237,12 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   async getTimestamp() {
     const lastBlockNumber = (await this.getCurrentBlock()) - 1;
     console.log('getTimestamp lastBlockNumber', lastBlockNumber);
-    try {
-      return this.getBlockTimestamp(lastBlockNumber);
-    } catch (e) {
-      // trying again, it can be failed because of RPC servers balancers with several nodes
+    return this.getBlockTimestamp(lastBlockNumber).catch((e) => {
+      console.error('getBlockTimestamp', e);
       return new Promise((resolve) => {
-        setTimeout(() => resolve(this.getBlockTimestamp(lastBlockNumber)), 3000);
+        setTimeout(() => resolve(this.getBlockTimestamp(lastBlockNumber)), 5000);
       });
-    }
+    })
   }
 
   async getBlockTimestamp(blockNumber) {
