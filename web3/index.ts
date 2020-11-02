@@ -367,7 +367,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       this.activeTxTimestamp = await this.getTimestamp();
 
       const response = this.httpWeb3.eth.sendSignedTransaction(signedTx.rawTransaction, async (err, hash) => {
-        if(err && _.includes(err.message, "Transaction gas price")) {
+        if(err && (_.includes(err.message, "Transaction gas price") || _.includes(err.message, "replacement transaction underpriced"))) {
           return resolve(this.sendMethod(contract, methodName, args, fromPrivateKey, nonce, gasPriceMul * 1.3));
         } else if(err && _.includes(err.message, "Insufficient funds")) {
           this.activeTxTimestamp = null;
