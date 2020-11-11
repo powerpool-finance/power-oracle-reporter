@@ -197,8 +197,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   processSymbols(symbols, filterSymbols = ['CVP', 'WETH', 'ETH']) {
-    //TODO: use filterSymbols after contracts upgrade
-    return symbols.map(s => s.replace('WETH', 'ETH'));
+    return symbols.map(s => s.replace('WETH', 'ETH')).filter(s => !_.includes(filterSymbols, s));
   }
 
   async getSymbolForReport() {
@@ -207,8 +206,10 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       this.getTokenPrices(),
     ]);
     const timestamp = await this.getTimestamp();
+    console.log('getSymbolForReport timestamp', timestamp);
     return this.processSymbols(prices.filter(p => {
       const delta = timestamp - p.timestamp;
+      console.log('p.timestamp', p.timestamp, 'delta', delta);
       return delta > minReportInterval;
     }).map(p => p.token.symbol));
   }
@@ -222,7 +223,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return this.processSymbols(prices.filter(p => {
       const delta = timestamp - p.timestamp;
       return delta > maxReportInterval;
-    }).map(p => p.token.symbol), ['WETH', 'ETH']);
+    }).map(p => p.token.symbol));
   }
 
   async getNetworkId() {
@@ -234,7 +235,18 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async getTimestamp() {
-    return utils.normalizeNumber((await this.httpWeb3.eth.getBlock((await this.getCurrentBlock()) - 1)).timestamp);
+    const lastBlockNumber = (await this.getCurrentBlock()) - 1;
+    console.log('getTimestamp lastBlockNumber', lastBlockNumber);
+    return this.getBlockTimestamp(lastBlockNumber).catch((e) => {
+      console.error('getBlockTimestamp', e);
+      return new Promise((resolve) => {
+        setTimeout(() => resolve(this.getBlockTimestamp(lastBlockNumber)), 5000);
+      });
+    })
+  }
+
+  async getBlockTimestamp(blockNumber) {
+    return utils.normalizeNumber((await this.httpWeb3.eth.getBlock(blockNumber)).timestamp);
   }
 
   async getCurrentBlock() {
@@ -355,7 +367,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       this.activeTxTimestamp = await this.getTimestamp();
 
       const response = this.httpWeb3.eth.sendSignedTransaction(signedTx.rawTransaction, async (err, hash) => {
-        if(err && _.includes(err.message, "Transaction gas price")) {
+        if(err && (_.includes(err.message, "Transaction gas price") || _.includes(err.message, "replacement transaction underpriced"))) {
           return resolve(this.sendMethod(contract, methodName, args, fromPrivateKey, nonce, gasPriceMul * 1.3));
         } else if(err && _.includes(err.message, "Insufficient funds")) {
           this.activeTxTimestamp = null;
@@ -387,8 +399,6 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         resolve({
           hash: hash,
           promise: response,
-          // nonce: options.nonce,
-          // gasPrice: gasPrice
         });
       })
     })
@@ -426,8 +436,6 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     if (!receipt) {
       return 'not_found';
     }
-
-    // console.log('getTransactionStatus', receipt);
 
     const txBlockNumber = receipt.blockNumber;
     if(!receipt.status) {
@@ -573,10 +581,6 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       const decoded = this.httpWeb3.eth.abi.decodeLog(inputs, log.data === '0x' ? null : log.data, log.topics.slice(1));
       const values = this.convertValuesByInputs(inputs, decoded);
       let name = abiEvent.name;
-      //TODO: remove after migration
-      if(name === 'RewardUser') {
-        name = 'RewardUserReport';
-      }
       return {
         name,
         txHash: log.transactionHash,

@@ -50,11 +50,9 @@ class PowerOracleTgBot implements IPowerOracleTgBot {
         }
         console.log('sendMessageToAdmin', this.adminIds, messageText);
         this.adminIds.forEach(adminId => {
-            try {
-                return this.bot.sendMessage(adminId, messageText, {parse_mode: 'HTML', disable_web_page_preview: true});
-            } catch (e) {
-                console.error('sendMessage to', adminId, 'error', e);
-            }
+            return this.bot.sendMessage(adminId, messageText, {parse_mode: 'HTML', disable_web_page_preview: true}).catch(e => {
+                console.error('sendMessageToAdmin', e.message);
+            });
         });
     }
 }

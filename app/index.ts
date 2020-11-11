@@ -73,7 +73,7 @@ class PowerOracleApp implements IPowerOracleApp {
 
     handleError(error) {
         console.error('handleError', error);
-        if(error && error.message && _.includes(error.message, 'Invalid JSON RPC')) {
+        if(error && error.message && (_.includes(error.message, 'Invalid JSON RPC') || _.includes(error.message, 'request failed or timed out'))) {
             return this.tgBot.sendMessageToAdmin(`⚠️ Data fetching error: RPC endpoint Time-out\n\nWe recommend to place more reliable Ethereum RPC endpoint to <code>RPC_SERVER</code> variable in bot starting command if this error appears too often.`);
         }
         const stackArr = error.stack.split("\n");
