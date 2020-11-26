@@ -54,6 +54,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async initHttpWeb3() {
+    console.log('initHttpWeb3', config.httpRpc);
     this.httpWeb3 = new Web3(new Web3.providers.HttpProvider(config.httpRpc));
     await this.createHttpContractInstances();
     [this.currentUserId, this.networkId] = await Promise.all([
@@ -259,10 +260,10 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         const { data: gasData } = await axios.get('https://etherchain.org/api/gasPriceOracle');
         return utils.gweiToWei(parseFloat(gasData.fast) + 3);
       } catch (e) {
-        return parseInt((await this.httpWeb3.eth.getGasPrice()).toString(10)) * 1.5;
+        return Math.round(parseInt((await this.httpWeb3.eth.getGasPrice()).toString(10)) * 1.5);
       }
     } else {
-      return _.random(10, 17) * 1000000000;
+      return utils.gweiToWei(_.random(10, 17));
     }
   }
 
@@ -405,7 +406,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async getTransaction(method, contractAddress, from, privateKey, nonce = null, gasPriceMul = 1) {
-    const gasPrice = (await this.getGasPrice()) * gasPriceMul;
+    const gasPrice = Math.round((await this.getGasPrice()) * gasPriceMul);
     const encodedABI = method.encodeABI();
 
     let options: any = { from, gasPrice, nonce, data: encodedABI, to: contractAddress };
