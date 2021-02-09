@@ -307,12 +307,24 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return this.pokeFromReporter(symbolsToReport);
   }
 
+  getPokeOpts() {
+    return this.httpWeb3.eth.abi.encodeParameter(
+        {
+          PowerPokeRewardOpts: {
+            to: 'address',
+            compensateInETH: 'bool'
+          },
+        },
+        config.poker.opts
+    );
+  }
+
   async pokeFromSlasher(symbols) {
     console.log('pokeFromSlasher', symbols);
     return this.sendMethod(
         this.httpOracleContract,
         'pokeFromSlasher',
-        [this.currentUserId, symbols],
+        [this.currentUserId, symbols, this.getPokeOpts()],
         config.poker.privateKey
     );
   }
@@ -322,7 +334,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return this.sendMethod(
         this.httpOracleContract,
         'pokeFromReporter',
-        [this.currentUserId, symbols],
+        [this.currentUserId, symbols, this.getPokeOpts()],
         config.poker.privateKey
     );
   }

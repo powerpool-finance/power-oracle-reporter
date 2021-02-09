@@ -19,7 +19,11 @@ module.exports = {
     'delayUntilNewTransaction': process.env.NEW_TX_DELAY || 10 * 60,
     'poker': {
         'privateKey': process.env.POKER_PRIVATE_KEY,
-        'address': utils.getAddressByPrivateKey(process.env.POKER_PRIVATE_KEY)
+        'address': utils.getAddressByPrivateKey(process.env.POKER_PRIVATE_KEY),
+        'opts': {
+            'to': utils.getAddressByPrivateKey(process.env.POKER_PRIVATE_KEY),
+            'compensateInETH': !!process.env.COMPENSATE_ETH
+        }
     },
     'network': process.env.NETWORK || 'mainnet'
 };
