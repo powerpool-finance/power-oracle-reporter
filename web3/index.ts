@@ -159,11 +159,12 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async getUserById(userId) {
-    return this.httpOracleStackingContract.methods.users(userId).call().then(async t => ({
-      deposit: utils.weiToEther(t.deposit),
-      adminKey: t.adminKey,
-      pokerKey: t.pokerKey,
-      financierKey: t.financierKey
+    return this.httpOracleStackingContract.methods.users(userId).call().then(async u => ({
+      id: userId,
+      deposit: utils.weiToEther(u.deposit),
+      adminKey: u.adminKey,
+      pokerKey: u.pokerKey,
+      financierKey: u.financierKey,
     }));
   }
 
