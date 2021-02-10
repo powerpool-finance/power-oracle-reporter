@@ -121,7 +121,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async getPendingReward() {
-    return utils.weiToEther(await this.httpOracleContract.methods.rewards(this.currentUserId).call());
+    return utils.weiToEther(await this.httpPokerContract.methods.rewards(this.currentUserId).call());
   }
 
   async getUserIdByPokerAddress(pokerKey) {
