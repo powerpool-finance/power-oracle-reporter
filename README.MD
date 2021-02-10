@@ -20,6 +20,9 @@ MAINNET=1 REPORTER_PRIVATE_KEY=<Reporter private key e.g. 0x7700fa638003ef53c104
 pm2 save && sudo pm2 startup # add to startup
 ```
 
+## ETH compensation
+To enable CVP compensation converting to ETH and sending to poker address you can add COMPENSATE_ETH=1 option to start script command.
+
 # Telegram bot
 Use a telegram bot to receive information about a change in your status (Price Reporter or Fisherman), the need to replenish the Reporter address balance in ETH, slashing, and others.
 

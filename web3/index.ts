@@ -32,6 +32,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   httpCvpContract: any;
   httpOracleContract: any;
   httpOracleStackingContract: any;
+  httpPokerContract: any;
 
   errorCallback;
   transactionCallback;
@@ -64,11 +65,12 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async createHttpContractInstances() {
-    const {data: contractsConfig} = await axios.get(`https://app.powerpool.finance/config/${config.network}.json`);
+    const {data: contractsConfig} = await axios.get(`https://${process.env.MAINNET ? '' : 'test-'}app.powerpool.finance/config/${config.network}.json`);
     this.contractsConfig = contractsConfig;
     this.httpCvpContract = new this.httpWeb3.eth.Contract(contractsConfig.CvpAbi, contractsConfig.CvpAddress);
-    this.httpOracleContract = new this.httpWeb3.eth.Contract(contractsConfig.PowerOracleAbi, contractsConfig.PowerOracleAddress);
-    this.httpOracleStackingContract = new this.httpWeb3.eth.Contract(contractsConfig.PowerOracleStackingAbi, contractsConfig.PowerOracleStackingAddress);
+    this.httpOracleContract = new this.httpWeb3.eth.Contract(contractsConfig.PokeOracleAbi, contractsConfig.PokeOracleAddress);
+    this.httpOracleStackingContract = new this.httpWeb3.eth.Contract(contractsConfig.PowerPokeStackingAbi, contractsConfig.PowerPokeStackingAddress);
+    this.httpPokerContract = new this.httpWeb3.eth.Contract(contractsConfig.PowerPokeAbi, contractsConfig.PowerPokeAddress);
   }
 
   async getTokenSymbol(tokenAddress) {
@@ -82,7 +84,24 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     if(!_.isUndefined(this.symbolsCache[tokenAddress])) {
       return this.symbolsCache[tokenAddress];
     }
-    const tokenContract = new this.httpWeb3.eth.Contract(this.contractsConfig.CvpAbi, tokenAddress);
+    const tokenContract = new this.httpWeb3.eth.Contract([{
+      constant: true,
+      inputs: [],
+      name: "_symbol",
+      outputs: [{ name: "", type: "string" }],
+      payable: false,
+      stateMutability: "view",
+      type: "function",
+      signature: "0xb09f1266",
+    }, {
+      constant: true,
+      inputs: [],
+      name: "symbol",
+      outputs: [{ name: "", type: "string" }],
+      payable: false,
+      stateMutability: "view",
+      type: "function",
+    }], tokenAddress);
     let symbol;
     try {
       symbol = await tokenContract.methods.symbol().call();
@@ -98,7 +117,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async getActualReporterUserId() {
-    return utils.normalizeNumber(await this.httpOracleStackingContract.methods.getReporterId().call());
+    return utils.normalizeNumber(await this.httpOracleStackingContract.methods.getHDHID().call());
   }
 
   async getPendingReward() {
@@ -187,10 +206,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async getReportIntervals() {
-    const [minReportInterval, maxReportInterval] = await Promise.all([
-      this.httpOracleContract.methods.minReportInterval().call(),
-      this.httpOracleContract.methods.maxReportInterval().call(),
-    ])
+    const {min: minReportInterval, max: maxReportInterval} = await this.httpPokerContract.methods.getMinMaxReportIntervals(this.httpOracleContract._address).call();
     return {
       minReportInterval: utils.normalizeNumber(minReportInterval),
       maxReportInterval: utils.normalizeNumber(maxReportInterval)
@@ -308,12 +324,24 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return this.pokeFromReporter(symbolsToReport);
   }
 
+  getPokeOpts() {
+    return this.httpWeb3.eth.abi.encodeParameter(
+        {
+          PowerPokeRewardOpts: {
+            to: 'address',
+            compensateInETH: 'bool'
+          },
+        },
+        config.poker.opts
+    );
+  }
+
   async pokeFromSlasher(symbols) {
     console.log('pokeFromSlasher', symbols);
     return this.sendMethod(
         this.httpOracleContract,
         'pokeFromSlasher',
-        [this.currentUserId, symbols],
+        [this.currentUserId, symbols, this.getPokeOpts()],
         config.poker.privateKey
     );
   }
@@ -323,7 +351,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return this.sendMethod(
         this.httpOracleContract,
         'pokeFromReporter',
-        [this.currentUserId, symbols],
+        [this.currentUserId, symbols, this.getPokeOpts()],
         config.poker.privateKey
     );
   }
