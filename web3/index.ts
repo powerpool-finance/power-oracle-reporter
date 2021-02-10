@@ -112,6 +112,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async isCurrentAccountReporter() {
+    console.log('this.currentUserId', this.currentUserId, 'await this.getActualReporterUserId()', await this.getActualReporterUserId(), 'this.currentUserId === await this.getActualReporterUserId()', this.currentUserId === await this.getActualReporterUserId());
     return this.currentUserId === await this.getActualReporterUserId();
   }
 
