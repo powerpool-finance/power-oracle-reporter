@@ -121,7 +121,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async getPendingReward() {
-    return utils.weiToEther(await this.httpOracleContract.methods.rewards(this.currentUserId).call());
+    return utils.weiToEther(await this.httpPokerContract.methods.rewards(this.currentUserId).call());
   }
 
   async getUserIdByPokerAddress(pokerKey) {
@@ -274,7 +274,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     if (this.networkId === 1) {
       try {
         const { data: gasData } = await axios.get('https://etherchain.org/api/gasPriceOracle');
-        return utils.gweiToWei(parseFloat(gasData.fast) + 3);
+        return utils.gweiToWei(parseFloat(gasData.standard) + 20);
       } catch (e) {
         return Math.round(parseInt((await this.httpWeb3.eth.getGasPrice()).toString(10)) * 1.5);
       }
