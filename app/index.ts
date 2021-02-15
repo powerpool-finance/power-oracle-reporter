@@ -108,10 +108,11 @@ class PowerOracleApp implements IPowerOracleApp {
                 const ethBalance = await this.powerOracleWeb3.getEthBalance(this.powerOracleWeb3.getCurrentPokerAddress());
                 footer += `\nETH balance: <code>${utils.roundNumber(ethBalance, 4)}</code> ETH\n`;
             }
-            const rewardEvents = parsedTx.events.filter(e => e && e.name === 'RewardUserReport' || e.name === 'RewardUserSlasherUpdate');
+            const rewardEvents = parsedTx.events.filter(e => e && e.name === 'RewardUser');
             rewardEvents.forEach(event => {
-                footer += event.name === 'RewardUserReport' ? `\nPrice report reward:` : `\nSlasher update reward:`;
-                footer += ` <code>${utils.roundNumber(event.values.calculatedReward, 2)}</code> CVP`;
+                const totalReward = event.values.compensationEvaluationCVP + event.values.bonusCVP;
+                footer += event.values.bonusPlan === 1 ? `\nPrice report reward:` : `\nSlasher update reward:`;
+                footer += ` <code>${utils.roundNumber(totalReward, 2)}</code> CVP`;
             });
 
             const totalReward = utils.roundNumber(await this.powerOracleWeb3.getPendingReward(), 2);
