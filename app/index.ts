@@ -108,7 +108,7 @@ class PowerOracleApp implements IPowerOracleApp {
                 const ethBalance = await this.powerOracleWeb3.getEthBalance(this.powerOracleWeb3.getCurrentPokerAddress());
                 footer += `\nETH balance: <code>${utils.roundNumber(ethBalance, 4)}</code> ETH\n`;
             }
-            const rewardEvents = parsedTx.events.filter(e => e.name === 'RewardUserReport' || e.name === 'RewardUserSlasherUpdate');
+            const rewardEvents = parsedTx.events.filter(e => e && e.name === 'RewardUserReport' || e.name === 'RewardUserSlasherUpdate');
             rewardEvents.forEach(event => {
                 footer += event.name === 'RewardUserReport' ? `\nPrice report reward:` : `\nSlasher update reward:`;
                 footer += ` <code>${utils.roundNumber(event.values.calculatedReward, 2)}</code> CVP`;
