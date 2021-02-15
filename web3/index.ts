@@ -33,6 +33,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   httpOracleContract: any;
   httpOracleStackingContract: any;
   httpPokerContract: any;
+  httpWeightsStrategyContract: any;
 
   errorCallback;
   transactionCallback;
@@ -71,6 +72,9 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     this.httpOracleContract = new this.httpWeb3.eth.Contract(contractsConfig.PokeOracleAbi, contractsConfig.PokeOracleAddress);
     this.httpOracleStackingContract = new this.httpWeb3.eth.Contract(contractsConfig.PowerPokeStackingAbi, contractsConfig.PowerPokeStackingAddress);
     this.httpPokerContract = new this.httpWeb3.eth.Contract(contractsConfig.PowerPokeAbi, contractsConfig.PowerPokeAddress);
+    if (contractsConfig.WeightsStrategyAddress) {
+      this.httpWeightsStrategyContract = new this.httpWeb3.eth.Contract(contractsConfig.WeightsStrategyAbi, contractsConfig.WeightsStrategyAddress);
+    }
   }
 
   async getTokenSymbol(tokenAddress) {
@@ -110,6 +114,44 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     }
     this.symbolsCache[tokenAddress] = symbol;
     return symbol;
+  }
+
+  async getPoolsToRebalance() {
+    const [{minReportInterval}, pools] = await Promise.all([
+      this.getWeightsStrategyReportIntervals(),
+      this.getActivePools(),
+    ]);
+    const timestamp = await this.getTimestamp();
+    console.log('getSymbolForReport timestamp', timestamp);
+    return pools.filter(p => {
+      const delta = timestamp - p.lastWeightsUpdate;
+      console.log('p.lastWeightsUpdate', p.lastWeightsUpdate, 'delta', delta);
+      return delta > minReportInterval;
+    }).map(p => p.address);
+  }
+
+  async getActivePools() {
+    return this.getActivePoolsAddresses().then(addresses => pIteration.map(addresses, (a) => this.getWeightsStrategyPool(a)));
+  }
+
+  async getWeightsStrategyPool(poolAddress) {
+    return this.httpWeightsStrategyContract.methods.poolsData(poolAddress).call().then(p => ({
+      ...p,
+      lastWeightsUpdate: utils.normalizeNumber(p.lastWeightsUpdate),
+      address: poolAddress
+    }));
+  }
+
+  async getActivePoolsAddresses() {
+    return this.httpWeightsStrategyContract.methods.getActivePoolsList().call();
+  }
+
+  async getWeightsStrategyReportIntervals() {
+    const {min: minReportInterval, max: maxReportInterval} = await this.httpPokerContract.methods.getMinMaxReportIntervals(this.httpWeightsStrategyContract._address).call();
+    return {
+      minReportInterval: utils.normalizeNumber(minReportInterval),
+      maxReportInterval: utils.normalizeNumber(maxReportInterval)
+    };
   }
 
   async isCurrentAccountReporter() {
@@ -205,7 +247,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         .then(slasherUpdate => utils.normalizeNumber(slasherUpdate));
   }
 
-  async getReportIntervals() {
+  async getOracleReportIntervals() {
     const {min: minReportInterval, max: maxReportInterval} = await this.httpPokerContract.methods.getMinMaxReportIntervals(this.httpOracleContract._address).call();
     return {
       minReportInterval: utils.normalizeNumber(minReportInterval),
@@ -219,7 +261,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
 
   async getSymbolForReport() {
     const [{minReportInterval}, prices] = await Promise.all([
-      this.getReportIntervals(),
+      this.getOracleReportIntervals(),
       this.getTokenPrices(),
     ]);
     const timestamp = await this.getTimestamp();
@@ -233,7 +275,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
 
   async getSymbolsForSlash() {
     const [{maxReportInterval}, prices] = await Promise.all([
-      this.getReportIntervals(),
+      this.getOracleReportIntervals(),
       this.getTokenPrices(),
     ]);
     const timestamp = await this.getTimestamp();
@@ -298,7 +340,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         this.getUserById(this.currentUserId),
         this.getUserById(await this.getActualReporterUserId()),
         this.getLastSlasherUpdate(this.currentUserId),
-        this.getReportIntervals()
+        this.getOracleReportIntervals()
     ]);
     const intervalsDiff = maxReportInterval - minReportInterval;
     console.log('curUser.deposit', curUser.deposit, 'reporterUser.deposit', reporterUser.deposit);
@@ -317,11 +359,25 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
 
   async checkAndActionAsReporter() {
     console.log('checkAndActionAsReporter');
-    const symbolsToReport = await this.getSymbolForReport();
-    if(!symbolsToReport.length) {
-      return;
-    }
-    return this.pokeFromReporter(symbolsToReport);
+    await Promise.all([
+      async () => {
+        const symbolsToReport = await this.getSymbolForReport();
+        if(!symbolsToReport.length) {
+          return;
+        }
+        return this.oraclePokeFromReporter(symbolsToReport);
+      },
+      async () => {
+        if (!this.httpWeightsStrategyContract) {
+          return;
+        }
+        const poolsToRebalance = await this.getPoolsToRebalance();
+        if(!poolsToRebalance.length) {
+          return;
+        }
+        return this.weightsStrategyPokeFromReporter(poolsToRebalance);
+      }
+    ])
   }
 
   getPokeOpts() {
@@ -346,8 +402,18 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     );
   }
 
-  async pokeFromReporter(symbols) {
-    console.log('pokeFromReporter', symbols);
+  async weightsStrategyPokeFromReporter(pools) {
+    console.log('weightsStrategyPokeFromReporter', pools);
+    return this.sendMethod(
+      this.httpWeightsStrategyContract,
+      'pokeFromReporter',
+      [this.currentUserId, pools, this.getPokeOpts()],
+      config.poker.privateKey
+    );
+  }
+
+  async oraclePokeFromReporter(symbols) {
+    console.log('oraclePokeFromReporter', symbols);
     return this.sendMethod(
         this.httpOracleContract,
         'pokeFromReporter',
