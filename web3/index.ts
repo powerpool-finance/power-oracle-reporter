@@ -359,25 +359,17 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
 
   async checkAndActionAsReporter() {
     console.log('checkAndActionAsReporter');
-    await Promise.all([
-      async () => {
-        const symbolsToReport = await this.getSymbolForReport();
-        if(!symbolsToReport.length) {
-          return;
-        }
-        return this.oraclePokeFromReporter(symbolsToReport);
-      },
-      async () => {
-        if (!this.httpWeightsStrategyContract) {
-          return;
-        }
-        const poolsToRebalance = await this.getPoolsToRebalance();
-        if(!poolsToRebalance.length) {
-          return;
-        }
-        return this.weightsStrategyPokeFromReporter(poolsToRebalance);
+
+    const symbolsToReport = await this.getSymbolForReport();
+    if(symbolsToReport.length) {
+      await this.oraclePokeFromReporter(symbolsToReport);
+    }
+    if (this.httpWeightsStrategyContract) {
+      const poolsToRebalance = await this.getPoolsToRebalance();
+      if(poolsToRebalance.length) {
+        await this.weightsStrategyPokeFromReporter(poolsToRebalance);
       }
-    ])
+    }
   }
 
   getPokeOpts() {
