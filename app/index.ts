@@ -111,7 +111,7 @@ class PowerOracleApp implements IPowerOracleApp {
             const rewardEvents = parsedTx.events.filter(e => e && e.name === 'RewardUser');
             rewardEvents.forEach(event => {
                 const totalReward = event.values.compensationEvaluationCVP + event.values.bonusCVP;
-                footer += event.values.bonusPlan === 1 ? `\nPrice report reward:` : `\nSlasher update reward:`;
+                footer += event.values.bonusPlan.toString() === '1' ? `\nPrice report reward:` : `\nSlasher update reward:`;
                 footer += ` <code>${utils.roundNumber(totalReward, 2)}</code> CVP`;
             });
 
