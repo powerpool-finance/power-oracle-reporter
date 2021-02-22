@@ -25,5 +25,6 @@ module.exports = {
             'compensateInETH': !!process.env.COMPENSATE_ETH
         }
     },
-    'network': process.env.NETWORK || 'kovan'
+    'network': process.env.NETWORK || 'kovan',
+    'maxGasPrice': process.env.MAX_GAS_PRICE || 250
 };

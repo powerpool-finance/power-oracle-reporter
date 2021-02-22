@@ -37,6 +37,8 @@ class PowerOracleApp implements IPowerOracleApp {
     storage: IPowerOracleStorage;
     tgBot: IPowerOracleTgBot;
 
+    lastMaxGasPriceErrorTime;
+
     constructor(web3, storage, tgBot) {
         this.powerOracleWeb3 = web3;
         this.storage = storage;
@@ -72,6 +74,13 @@ class PowerOracleApp implements IPowerOracleApp {
     }
 
     handleError(error) {
+        if(_.includes(error.message, "Max Gas Price")) {
+            const curTime = Math.round(new Date().getTime() / 1000);
+            if(!this.lastMaxGasPriceErrorTime || curTime - this.lastMaxGasPriceErrorTime >= 60 * 60) {
+                this.lastMaxGasPriceErrorTime = curTime;
+                return this.tgBot.sendMessageToAdmin(`⚠️ ${error.message}`);
+            }
+        }
         console.error('handleError', error);
         if(error && error.message && (_.includes(error.message, 'Invalid JSON RPC') || _.includes(error.message, 'request failed or timed out'))) {
             return this.tgBot.sendMessageToAdmin(`⚠️ Data fetching error: RPC endpoint Time-out\n\nWe recommend to place more reliable Ethereum RPC endpoint to <code>RPC_SERVER</code> variable in bot starting command if this error appears too often.`);
