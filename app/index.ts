@@ -126,6 +126,7 @@ class PowerOracleApp implements IPowerOracleApp {
 
             const totalReward = utils.roundNumber(await this.powerOracleWeb3.getPendingReward(), 2);
             footer += `\nPending reward: <code>${totalReward}</code> CVP`;
+            footer += `\nGas price: <code>${parsedTx.gasPriceGwei}</code> gwei`;
 
             return this.tgBot.sendMessageToAdmin(
                 `${prefix} ${this.powerOracleWeb3.getTxLink(hash)}\n\n✏️ Action: <code>${parsedTx.methodName}</code>`
