@@ -651,6 +651,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       const {input: data, gas, gasPrice} = tx;
       const weiSpent = utils.mul(gas, gasPrice);
       return {
+        gasPriceGwei: Math.round(parseFloat(utils.weiToGwei(gasPrice))),
         ethSpent: utils.weiToEther(weiSpent),
         weiSpent,
         status,
