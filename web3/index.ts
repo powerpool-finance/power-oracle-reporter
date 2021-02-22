@@ -495,7 +495,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     const gasPrice = Math.round((await this.getGasPrice()) * gasPriceMul);
     const encodedABI = method.encodeABI();
 
-    const gweiGasPrice = parseFloat(utils.weiToGwei(gasPrice));
+    const gweiGasPrice = parseFloat(utils.weiToGwei(gasPrice.toString()));
     if(gweiGasPrice > parseFloat(config.maxGasPrice)) {
       throw new Error('Max Gas Price: ' + Math.round(gweiGasPrice));
     }
