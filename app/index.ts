@@ -76,10 +76,11 @@ class PowerOracleApp implements IPowerOracleApp {
     handleError(error) {
         if(_.includes(error.message, "Max Gas Price")) {
             const curTime = Math.round(new Date().getTime() / 1000);
-            if(!this.lastMaxGasPriceErrorTime || curTime - this.lastMaxGasPriceErrorTime >= 60 * 60) {
+            if(!this.lastMaxGasPriceErrorTime || curTime - this.lastMaxGasPriceErrorTime >= 10 * 60) {
                 this.lastMaxGasPriceErrorTime = curTime;
                 return this.tgBot.sendMessageToAdmin(`⚠️ ${error.message}`);
             }
+            return;
         }
         console.error('handleError', error);
         if(error && error.message && (_.includes(error.message, 'Invalid JSON RPC') || _.includes(error.message, 'request failed or timed out'))) {
