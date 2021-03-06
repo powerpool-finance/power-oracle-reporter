@@ -50,6 +50,10 @@ const utils = {
         return web3Utils.toWei(utils.normalizeNumber(gwei).toFixed(9), 'gwei');
     },
 
+    weiToGwei(wei) {
+        return web3Utils.fromWei(wei, 'gwei');
+    },
+
     getTimestamp() {
         return Math.floor(new Date().getTime() / 1000);
     },
