@@ -211,14 +211,11 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         this.httpIndicesZapContract.getPastEvents('Deposit', filter),
         this.httpIndicesZapContract.getPastEvents('ClaimPoke', filter),
       ]);
-      console.log('depositedUsers', depositedUsers.length);
-      console.log('claimedUsers', claimedUsers.length);
       const claimed = {};
       claimedUsers.forEach(c => {
         claimed[c.returnValues.claimFor] = true;
       });
       round.users = _.uniq(depositedUsers.map(d => d.returnValues.user).filter(u => !claimed[u]));
-      console.log('round.users', round.users);
       return round;
     }).then(rounds => rounds.filter(r => r.users.length));
   }
@@ -491,7 +488,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return this.sendMethod(
       this.httpIndicesZapContract,
       'claimPokeFromReporter',
-      [this.currentUserId, roundKey, claimForList, this.getPokeOpts()],
+      [this.currentUserId, roundKey, claimForList.slice(0, 100), this.getPokeOpts()],
       config.poker.privateKey
     );
   }
