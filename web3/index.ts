@@ -205,8 +205,8 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     });
 
     return pIteration.mapSeries(roundsToClaim, async round => {
-      const {blockNumber, key: roundKey} = round;
-      const filter = { fromBlock: blockNumber, filter: { roundKey } };
+      const {startBlock, key: roundKey} = round;
+      const filter = { fromBlock: startBlock, filter: { roundKey } };
       const [depositedUsers, claimedUsers] = await Promise.all([
         this.httpIndicesZapContract.getPastEvents('Deposit', filter),
         this.httpIndicesZapContract.getPastEvents('ClaimPoke', filter),
