@@ -425,12 +425,16 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       }
     }
     if (this.httpIndicesZapContract) {
+      console.log('httpIndicesZapContract');
       const rounds = await this.getReadyToExecuteRounds();
+      console.log('rounds.length', rounds.length);
       const roundsToSupply = await this.filterRoundsToSupply(rounds);
+      console.log('roundsToSupply.length', roundsToSupply.length);
       if (roundsToSupply.length) {
         await this.indicesZapSupplyRedeemPokeFromReporter(roundsToSupply.map(r => r.key));
       }
       const roundsToClain = await this.filterRoundsToClaim(rounds);
+      console.log('roundsToClain.length', roundsToClain.length);
       if (roundsToClain.length) {
         await this.indicesZapClaimPokeFromReporter(roundsToClain[0].key, roundsToClain[0].users);
       }
