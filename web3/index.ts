@@ -217,6 +217,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         claimed[c.returnValues.claimFor] = true;
       });
       round.users = depositedUsers.map(d => d.returnValues.user).filter(u => !claimed[u]);
+      console.log('round.users', round.users);
       return round;
     }).then(rounds => rounds.filter(r => r.users.length));
   }
