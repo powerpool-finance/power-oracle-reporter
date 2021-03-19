@@ -211,6 +211,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         this.httpIndicesZapContract.getPastEvents('Deposit', filter),
         this.httpIndicesZapContract.getPastEvents('ClaimPoke', filter),
       ]);
+      console.log('claimedUsers', claimedUsers.length);
       const claimed = {};
       claimedUsers.forEach(c => {
         claimed[c.returnValues.claimFor] = true;
