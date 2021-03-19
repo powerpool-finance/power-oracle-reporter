@@ -217,7 +217,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       claimedUsers.forEach(c => {
         claimed[c.returnValues.claimFor] = true;
       });
-      round.users = depositedUsers.map(d => d.returnValues.user).filter(u => !claimed[u]);
+      round.users = _.uniq(depositedUsers.map(d => d.returnValues.user).filter(u => !claimed[u]));
       console.log('round.users', round.users);
       return round;
     }).then(rounds => rounds.filter(r => r.users.length));
@@ -487,8 +487,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async indicesZapClaimPokeFromReporter(roundKey, claimForList) {
-    console.log('indicesZapClaimPokeFromReporter', this.currentUserId,roundKey, claimForList, this.getPokeOpts());
-    console.log(this.httpIndicesZapContract.methods.claimPokeFromReporter(this.currentUserId, roundKey, claimForList, this.getPokeOpts()).encodeABI());
+    console.log('indicesZapClaimPokeFromReporter', this.currentUserId, roundKey, claimForList, this.getPokeOpts());
     return this.sendMethod(
       this.httpIndicesZapContract,
       'claimPokeFromReporter',
