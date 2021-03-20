@@ -215,11 +215,11 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       const deposited = {};
       depositedUsers.forEach(d => {
         const user = d.returnValues.user.toLowerCase();
-        deposited[user] = utils.add(deposited[user], d.returnValues.inputAmount);
+        deposited[user] = utils.add(deposited[user] || '0', d.returnValues.inputAmount);
       })
       withdrawals.forEach(w => {
         const user = w.returnValues.user.toLowerCase();
-        deposited[user] = utils.sub(deposited[user], w.returnValues.inputAmount);
+        deposited[user] = utils.sub(deposited[user] || '0', w.returnValues.inputAmount);
       })
       const claimed = {};
       claimedUsers.forEach(c => {
