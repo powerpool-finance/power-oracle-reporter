@@ -492,7 +492,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return this.sendMethod(
       this.httpIndicesZapContract,
       'claimPokeFromReporter',
-      [this.currentUserId, roundKey, claimForList.slice(0, 100), this.getPokeOpts()],
+      [this.currentUserId, roundKey, claimForList.slice(1, 100), this.getPokeOpts()],
       config.poker.privateKey
     );
   }
