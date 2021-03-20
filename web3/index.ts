@@ -211,13 +211,15 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         this.httpIndicesZapContract.getPastEvents('Deposit', filter),
         this.httpIndicesZapContract.getPastEvents('ClaimPoke', filter),
       ]);
-      console.log('depositedUsers', depositedUsers.map(d => d.returnValues.user))
-      console.log('claimedUsers', claimedUsers.map(d => d.returnValues.claimFor))
       const claimed = {};
       claimedUsers.forEach(c => {
         claimed[c.returnValues.claimFor.toLowerCase()] = true;
       });
       round.users = _.uniq(depositedUsers.map(d => d.returnValues.user.toLowerCase()).filter(u => !claimed[u]));
+      if(round.users.length) {
+        console.log('depositedUsers', depositedUsers.map(d => d.returnValues.user));
+        console.log('claimedUsers', claimedUsers.map(d => d.returnValues.claimFor));
+      }
       return round;
     }).then(rounds => rounds.filter(r => r.users.length));
   }
