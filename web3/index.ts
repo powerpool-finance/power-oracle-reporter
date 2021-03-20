@@ -207,15 +207,25 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return pIteration.mapSeries(roundsToClaim, async round => {
       const {startBlock, key: roundKey} = round;
       const filter = { fromBlock: startBlock, filter: { roundKey } };
-      const [depositedUsers, claimedUsers] = await Promise.all([
+      const [depositedUsers, withdrawals, claimedUsers] = await Promise.all([
         this.httpIndicesZapContract.getPastEvents('Deposit', filter),
+        this.httpIndicesZapContract.getPastEvents('Withdraw', filter),
         this.httpIndicesZapContract.getPastEvents('ClaimPoke', filter),
       ]);
+      const deposited = {};
+      depositedUsers.forEach(d => {
+        const user = d.returnValues.user.toLowerCase();
+        deposited[user] = utils.add(deposited[user], d.returnValues.inputAmount);
+      })
+      withdrawals.forEach(w => {
+        const user = w.returnValues.user.toLowerCase();
+        deposited[user] = utils.sub(deposited[user], w.returnValues.inputAmount);
+      })
       const claimed = {};
       claimedUsers.forEach(c => {
         claimed[c.returnValues.claimFor.toLowerCase()] = true;
       });
-      round.users = _.uniq(depositedUsers.map(d => d.returnValues.user.toLowerCase()).filter(u => !claimed[u]));
+      round.users = _.uniq(depositedUsers.map(d => d.returnValues.user.toLowerCase()).filter(u => !claimed[u] && deposited[u] !== '0'));
       if(round.users.length) {
         console.log('depositedUsers', depositedUsers.map(d => d.returnValues.user));
         console.log('claimedUsers', claimedUsers.map(d => d.returnValues.claimFor));
@@ -492,7 +502,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return this.sendMethod(
       this.httpIndicesZapContract,
       'claimPokeFromReporter',
-      [this.currentUserId, roundKey, claimForList.slice(1, 100), this.getPokeOpts()],
+      [this.currentUserId, roundKey, claimForList.slice(0, 100), this.getPokeOpts()],
       config.poker.privateKey
     );
   }
