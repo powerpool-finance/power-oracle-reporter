@@ -64,6 +64,13 @@ const utils = {
     add(a, b) {
         return toBN(a.toString(10), 10).add(toBN(b.toString(10), 10)).toString(10);
     },
+    sub(a, b) {
+        return toBN(a.toString(10), 10).sub(toBN(b.toString(10), 10)).toString(10);
+    },
+
+    gte(a, b) {
+        return toBN(a.toString(10), 10).gte(toBN(b.toString(10), 10));
+    },
 
     greaterThenDecimals(n, d) {
         return toBN(n.toString(10), 10).gt(toBN((10 ** d).toString(10), 10));

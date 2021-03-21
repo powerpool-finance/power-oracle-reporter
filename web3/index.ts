@@ -34,6 +34,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   httpOracleStackingContract: any;
   httpPokerContract: any;
   httpWeightsStrategyContract: any;
+  httpIndicesZapContract: any;
 
   errorCallback;
   transactionCallback;
@@ -74,6 +75,9 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     this.httpPokerContract = new this.httpWeb3.eth.Contract(contractsConfig.PowerPokeAbi, contractsConfig.PowerPokeAddress);
     if (contractsConfig.WeightsStrategyAddress) {
       this.httpWeightsStrategyContract = new this.httpWeb3.eth.Contract(contractsConfig.WeightsStrategyAbi, contractsConfig.WeightsStrategyAddress);
+    }
+    if (contractsConfig.IndicesZapAddress) {
+      this.httpIndicesZapContract = new this.httpWeb3.eth.Contract(contractsConfig.IndicesZapAbi, contractsConfig.IndicesZapAddress);
     }
   }
 
@@ -122,10 +126,8 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       this.getActivePools(),
     ]);
     const timestamp = await this.getTimestamp();
-    console.log('getSymbolForReport timestamp', timestamp);
     return pools.filter(p => {
       const delta = timestamp - p.lastWeightsUpdate;
-      console.log('p.lastWeightsUpdate', p.lastWeightsUpdate, 'delta', delta);
       return delta > minReportInterval;
     }).map(p => p.address);
   }
@@ -164,6 +166,66 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
 
   async getPendingReward() {
     return utils.weiToEther(await this.httpPokerContract.methods.rewards(this.currentUserId).call());
+  }
+
+  async getRoundReadyToExecute(key) {
+    return this.httpIndicesZapContract.methods.isRoundReadyToExecute(key).call();
+  }
+
+  async getRound(key) {
+    return this.httpIndicesZapContract.methods.rounds(key).call().then(r => ({
+      ...r,
+      key,
+    }));
+  }
+
+  async getReadyToExecuteRounds() {
+    const fromBlock = (await this.getCurrentBlock()) - 10000;
+    const roundInited = await this.httpIndicesZapContract.getPastEvents('InitRound', { fromBlock });
+    const readyToExecute = [];
+    await pIteration.forEachSeries(_.chunk(roundInited, 10), (chunk) => {
+      return pIteration.forEach(chunk, async (e) => {
+        if (await this.getRoundReadyToExecute(e.returnValues.key)) {
+          readyToExecute.push(await this.getRound(e.returnValues.key));
+        }
+      });
+    });
+    return readyToExecute;
+  }
+
+  async filterRoundsToSupply(roundsReadyToExecute) {
+    return roundsReadyToExecute.filter(r => r.totalOutputAmount.toString() === '0');
+  }
+
+  async filterRoundsToClaim(roundsReadyToExecute) {
+    const roundsToClaim = roundsReadyToExecute.filter(r => {
+      return r.totalOutputAmount.toString() !== '0' && !utils.gte(r.totalOutputAmountClaimed, r.totalOutputAmount);
+    });
+
+    return pIteration.mapSeries(roundsToClaim, async round => {
+      const {startBlock, key: roundKey} = round;
+      const filter = { fromBlock: startBlock, filter: { roundKey } };
+      const [depositedUsers, withdrawals, claimedUsers] = await Promise.all([
+        this.httpIndicesZapContract.getPastEvents('Deposit', filter),
+        this.httpIndicesZapContract.getPastEvents('Withdraw', filter),
+        this.httpIndicesZapContract.getPastEvents('ClaimPoke', filter),
+      ]);
+      const deposited = {};
+      depositedUsers.forEach(d => {
+        const user = d.returnValues.user.toLowerCase();
+        deposited[user] = utils.add(deposited[user] || '0', d.returnValues.inputAmount);
+      })
+      withdrawals.forEach(w => {
+        const user = w.returnValues.user.toLowerCase();
+        deposited[user] = utils.sub(deposited[user] || '0', w.returnValues.inputAmount);
+      })
+      const claimed = {};
+      claimedUsers.forEach(c => {
+        claimed[c.returnValues.claimFor.toLowerCase()] = true;
+      });
+      round.users = _.uniq(depositedUsers.map(d => d.returnValues.user.toLowerCase()).filter(u => !claimed[u] && deposited[u] !== '0'));
+      return round;
+    }).then(rounds => rounds.filter(r => r.users.length));
   }
 
   async getUserIdByPokerAddress(pokerKey) {
@@ -265,10 +327,8 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       this.getTokenPrices(),
     ]);
     const timestamp = await this.getTimestamp();
-    console.log('getSymbolForReport timestamp', timestamp);
     return this.processSymbols(prices.filter(p => {
       const delta = timestamp - p.timestamp;
-      console.log('p.timestamp', p.timestamp, 'delta', delta);
       return delta > minReportInterval;
     }).map(p => p.token.symbol));
   }
@@ -295,9 +355,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
 
   async getTimestamp() {
     const lastBlockNumber = (await this.getCurrentBlock()) - 1;
-    console.log('getTimestamp lastBlockNumber', lastBlockNumber);
     return this.getBlockTimestamp(lastBlockNumber).catch((e) => {
-      console.error('getBlockTimestamp', e);
       return new Promise((resolve) => {
         setTimeout(() => resolve(this.getBlockTimestamp(lastBlockNumber)), 5000);
       });
@@ -370,6 +428,17 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         await this.weightsStrategyPokeFromReporter(poolsToRebalance);
       }
     }
+    if (this.httpIndicesZapContract) {
+      const rounds = await this.getReadyToExecuteRounds();
+      const roundsToSupply = await this.filterRoundsToSupply(rounds);
+      if (roundsToSupply.length) {
+        await this.indicesZapSupplyRedeemPokeFromReporter(roundsToSupply.map(r => r.key));
+      }
+      const roundsToClain = await this.filterRoundsToClaim(rounds);
+      if (roundsToClain.length) {
+        await this.indicesZapClaimPokeFromReporter(roundsToClain[0].key, roundsToClain[0].users);
+      }
+    }
   }
 
   getPokeOpts() {
@@ -400,6 +469,26 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       this.httpWeightsStrategyContract,
       'pokeFromReporter',
       [this.currentUserId, pools, this.getPokeOpts()],
+      config.poker.privateKey
+    );
+  }
+
+  async indicesZapSupplyRedeemPokeFromReporter(roundKeys) {
+    console.log('indicesZapPokeFromReporter', roundKeys);
+    return this.sendMethod(
+      this.httpIndicesZapContract,
+      'supplyAndRedeemPokeFromReporter',
+      [this.currentUserId, roundKeys, this.getPokeOpts()],
+      config.poker.privateKey
+    );
+  }
+
+  async indicesZapClaimPokeFromReporter(roundKey, claimForList) {
+    console.log('indicesZapClaimPokeFromReporter', roundKey, claimForList);
+    return this.sendMethod(
+      this.httpIndicesZapContract,
+      'claimPokeFromReporter',
+      [this.currentUserId, roundKey, claimForList.slice(0, 100), this.getPokeOpts()],
       config.poker.privateKey
     );
   }
