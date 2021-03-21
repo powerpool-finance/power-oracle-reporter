@@ -126,10 +126,8 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       this.getActivePools(),
     ]);
     const timestamp = await this.getTimestamp();
-    console.log('getSymbolForReport timestamp', timestamp);
     return pools.filter(p => {
       const delta = timestamp - p.lastWeightsUpdate;
-      console.log('p.lastWeightsUpdate', p.lastWeightsUpdate, 'delta', delta);
       return delta > minReportInterval;
     }).map(p => p.address);
   }
@@ -226,10 +224,6 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         claimed[c.returnValues.claimFor.toLowerCase()] = true;
       });
       round.users = _.uniq(depositedUsers.map(d => d.returnValues.user.toLowerCase()).filter(u => !claimed[u] && deposited[u] !== '0'));
-      if(round.users.length) {
-        console.log('depositedUsers', depositedUsers.map(d => d.returnValues.user));
-        console.log('claimedUsers', claimedUsers.map(d => d.returnValues.claimFor));
-      }
       return round;
     }).then(rounds => rounds.filter(r => r.users.length));
   }
@@ -333,10 +327,8 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       this.getTokenPrices(),
     ]);
     const timestamp = await this.getTimestamp();
-    console.log('getSymbolForReport timestamp', timestamp);
     return this.processSymbols(prices.filter(p => {
       const delta = timestamp - p.timestamp;
-      console.log('p.timestamp', p.timestamp, 'delta', delta);
       return delta > minReportInterval;
     }).map(p => p.token.symbol));
   }
@@ -363,9 +355,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
 
   async getTimestamp() {
     const lastBlockNumber = (await this.getCurrentBlock()) - 1;
-    console.log('getTimestamp lastBlockNumber', lastBlockNumber);
     return this.getBlockTimestamp(lastBlockNumber).catch((e) => {
-      console.error('getBlockTimestamp', e);
       return new Promise((resolve) => {
         setTimeout(() => resolve(this.getBlockTimestamp(lastBlockNumber)), 5000);
       });
@@ -439,16 +429,12 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       }
     }
     if (this.httpIndicesZapContract) {
-      console.log('httpIndicesZapContract');
       const rounds = await this.getReadyToExecuteRounds();
-      console.log('rounds.length', rounds.length);
       const roundsToSupply = await this.filterRoundsToSupply(rounds);
-      console.log('roundsToSupply.length', roundsToSupply.length);
       if (roundsToSupply.length) {
         await this.indicesZapSupplyRedeemPokeFromReporter(roundsToSupply.map(r => r.key));
       }
       const roundsToClain = await this.filterRoundsToClaim(rounds);
-      console.log('roundsToClain.length', roundsToClain.length);
       if (roundsToClain.length) {
         await this.indicesZapClaimPokeFromReporter(roundsToClain[0].key, roundsToClain[0].users);
       }
@@ -498,7 +484,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async indicesZapClaimPokeFromReporter(roundKey, claimForList) {
-    console.log('indicesZapClaimPokeFromReporter', this.currentUserId, roundKey, claimForList, this.getPokeOpts());
+    console.log('indicesZapClaimPokeFromReporter', roundKey, claimForList);
     return this.sendMethod(
       this.httpIndicesZapContract,
       'claimPokeFromReporter',
