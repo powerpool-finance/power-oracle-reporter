@@ -228,11 +228,19 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     }).then(rounds => rounds.filter(r => r.users.length));
   }
 
+  getFromBlock(contract) {
+    return {
+      '0x646e846b6ee143bde4f329d4165929bbdcf425f5': 11829480,
+      '0x85c6d6b0cd1383cc85e8e36c09d0815daf36b9e9': 12063574
+    }[contract._address.toLowerCase()];
+  }
+
   async getUserIdByPokerAddress(pokerKey) {
     pokerKey = pokerKey.toLowerCase();
-    const userCreated = await this.httpOracleStackingContract.getPastEvents('CreateUser', { fromBlock: 0, filter: { pokerKey } }).then(events => events[0]);
+    const fromBlock = this.getFromBlock(this.httpOracleStackingContract);
+    const userCreated = await this.httpOracleStackingContract.getPastEvents('CreateUser', { fromBlock, filter: { pokerKey } }).then(events => events[0]);
 
-    const userUpdated = _.last(await this.httpOracleStackingContract.getPastEvents('UpdateUser', { fromBlock: 0, filter: { pokerKey } }));
+    const userUpdated = _.last(await this.httpOracleStackingContract.getPastEvents('UpdateUser', { fromBlock, filter: { pokerKey } }));
 
     let userId;
     if(userUpdated && (!userCreated || userUpdated.blockNumber > userCreated.blockNumber)) {
