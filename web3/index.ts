@@ -59,6 +59,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   async initHttpWeb3() {
     console.log('initHttpWeb3', config.httpRpc);
     this.httpWeb3 = new Web3(new Web3.providers.HttpProvider(config.httpRpc));
+    console.log('blockNumber', await this.getCurrentBlock());
     await this.createHttpContractInstances();
     [this.currentUserId, this.networkId] = await Promise.all([
       this.getUserIdByPokerAddress(this.getCurrentPokerAddress()),
