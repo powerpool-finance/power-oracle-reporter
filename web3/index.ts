@@ -611,7 +611,8 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     try {
       options.gas = Math.round((await method.estimateGas(options)) * 1.1);
     } catch (e) {
-      throw new Error('Revert: ' + JSON.stringify(options))
+      console.error(e.message);
+      throw new Error('Revert: ' + e.message + '\n\n' + JSON.stringify(options))
     }
 
     return this.httpWeb3.eth.accounts.signTransaction(options, privateKey, false);
