@@ -474,7 +474,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async indicesZapSupplyRedeemPokeFromReporter(roundKeys) {
-    console.log('indicesZapPokeFromReporter', roundKeys);
+    console.log('indicesZapPokeFromReporter', this.currentUserId, roundKeys, this.getPokeOpts());
     return this.sendMethod(
       this.httpIndicesZapContract,
       'supplyAndRedeemPokeFromReporter',
