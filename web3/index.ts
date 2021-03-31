@@ -616,9 +616,11 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       throw new Error('Revert: ' + e.message + '\n\n' + JSON.stringify(options))
     }
 
-    const balance = utils.mul(options.gas, gasPrice);
-    if(!utils.gte(await this.httpWeb3.eth.getBalance(from), balance)) {
-      throw new Error('Not enough balance');
+    const needBalance = utils.mul(options.gas, gasPrice);
+    console.log('needBalance', needBalance);
+    console.log('await this.httpWeb3.eth.getBalance(from)', await this.httpWeb3.eth.getBalance(from));
+    if(!utils.gte(await this.httpWeb3.eth.getBalance(from), needBalance)) {
+      throw new Error('Not enough needBalance');
     }
 
     return this.httpWeb3.eth.accounts.signTransaction(options, privateKey, false);
