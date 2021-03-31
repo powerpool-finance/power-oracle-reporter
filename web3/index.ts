@@ -613,7 +613,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
 
     const needBalance = utils.mul(gasWith1Gwei, gasPrice);
     if(!utils.gte(await this.httpWeb3.eth.getBalance(from), needBalance)) {
-      throw new Error('Not enough needBalance');
+      throw new Error('Not enough balance');
     }
 
     try {
