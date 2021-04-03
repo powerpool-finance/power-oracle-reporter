@@ -609,6 +609,13 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       options.nonce = this.httpWeb3.utils.hexToNumber(options.nonce);
     }
 
+    const gasWith1Gwei = Math.round((await method.estimateGas({...options, gasPrice: utils.gweiToWei(1)})) * 1.1);
+
+    const needBalance = utils.mul(gasWith1Gwei, gasPrice);
+    if(!utils.gte(await this.httpWeb3.eth.getBalance(from), needBalance)) {
+      throw new Error('Not enough balance');
+    }
+
     try {
       options.gas = Math.round((await method.estimateGas(options)) * 1.1);
     } catch (e) {

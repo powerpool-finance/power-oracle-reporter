@@ -90,7 +90,8 @@ class PowerOracleApp implements IPowerOracleApp {
         let appStack = stackArr
             .filter(stackStr => !_.includes(stackStr, 'node_modules')  && !_.includes(stackStr, error.message))
             .map(stackStr => _.trim(stackStr, " "))
-            .join("\n");
+            .join("\n")
+            .replace(error.message, '');
         // console.log('error.stack.split("\\n")', error.stack.split("\n"));
         return this.tgBot.sendMessageToAdmin(`❌  Error in bot:\n\n<pre>${utils.tgClear(error.message)}</pre>\n\n<pre>${utils.tgClear(appStack)}</pre>`);
     }
