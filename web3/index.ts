@@ -187,7 +187,10 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     await pIteration.forEachSeries(_.chunk(roundInited, 10), (chunk) => {
       return pIteration.forEach(chunk, async (e) => {
         if (await this.getRoundReadyToExecute(e.returnValues.key)) {
-          readyToExecute.push(await this.getRound(e.returnValues.key));
+          const round = await this.getRound(e.returnValues.key);
+          if (round.totalInputAmount.toString() !== '0') {
+            readyToExecute.push(round);
+          }
         }
       });
     });
