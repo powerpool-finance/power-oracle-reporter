@@ -169,6 +169,10 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return utils.weiToEther(await this.httpPokerContract.methods.rewards(this.currentUserId).call());
   }
 
+  async getCreditOf(clientContract) {
+    return utils.weiToEther(await this.httpPokerContract.methods.creditOf(clientContract).call());
+  }
+
   async getRoundReadyToExecute(key) {
     return this.httpIndicesZapContract.methods.isRoundReadyToExecute(key).call();
   }
@@ -758,13 +762,14 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       ]);
       const status = await this.getTransactionStatusByReceipt(receipt);
 
-      const {input: data, gas, gasPrice} = tx;
+      const {input: data, gas, gasPrice, to: contractAddress} = tx;
       const weiSpent = utils.mul(gas, gasPrice);
       return {
         gasPriceGwei: Math.round(parseFloat(utils.weiToGwei(gasPrice))),
         ethSpent: utils.weiToEther(weiSpent),
         weiSpent,
         status,
+        contractAddress,
         events: this.parseLogs(receipt.logs),
         ...this.parseData(data)
       };

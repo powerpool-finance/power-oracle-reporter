@@ -112,7 +112,8 @@ class PowerOracleApp implements IPowerOracleApp {
                 return this.tgBot.sendMessageToAdmin(`🛑 Tx not found ${this.powerOracleWeb3.getTxLink(hash)}`);
             }
 
-            let footer = '';
+            const contractCredits = await this.powerOracleWeb3.getCreditOf(parsedTx.contractAddress)
+            let footer = 'Contract credits: <code>${utils.roundNumber(contractCredits)}</code> CVP\n';
             if (parsedTx.ethSpent && parsedTx.weiSpent) {
                 const totalWeiSpent = await this.storage.increaseBnValue('wei_spent', parsedTx.weiSpent);
                 footer += `\nETH spent: <code>${utils.roundNumber(parsedTx.ethSpent, 4)}</code> / <code>${utils.weiToEther(totalWeiSpent, 4)}</code> ETH`;

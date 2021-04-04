@@ -25,6 +25,7 @@ export interface IPowerOracleWeb3 {
 
   getEthBalance(userAddress): Promise<number>;
   getPendingReward(): Promise<number>;
+  getCreditOf(contractClient): Promise<number>;
 
   onError(callback);
   onTransaction(callback);
