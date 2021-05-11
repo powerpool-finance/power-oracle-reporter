@@ -31,10 +31,11 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   httpWeb3: any;
   httpCvpContract: any;
   httpOracleContract: any;
-  httpOracleStackingContract: any;
+  httpStackingContract: any;
   httpPokerContract: any;
   httpWeightsStrategyContract: any;
   httpIndicesZapContract: any;
+  httpRouterContracts: any[];
 
   errorCallback;
   transactionCallback;
@@ -72,59 +73,167 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     this.contractsConfig = contractsConfig;
     this.httpCvpContract = new this.httpWeb3.eth.Contract(contractsConfig.CvpAbi, contractsConfig.CvpAddress);
     this.httpOracleContract = new this.httpWeb3.eth.Contract(contractsConfig.PokeOracleAbi, contractsConfig.PokeOracleAddress);
-    this.httpOracleStackingContract = new this.httpWeb3.eth.Contract(contractsConfig.PowerPokeStackingAbi, contractsConfig.PowerPokeStackingAddress);
+    this.httpStackingContract = new this.httpWeb3.eth.Contract(contractsConfig.PowerPokeStackingAbi, contractsConfig.PowerPokeStackingAddress);
     this.httpPokerContract = new this.httpWeb3.eth.Contract(contractsConfig.PowerPokeAbi, contractsConfig.PowerPokeAddress);
+
     if (contractsConfig.WeightsStrategyAddress) {
       this.httpWeightsStrategyContract = new this.httpWeb3.eth.Contract(contractsConfig.WeightsStrategyAbi, contractsConfig.WeightsStrategyAddress);
     }
     if (contractsConfig.IndicesZapAddress) {
       this.httpIndicesZapContract = new this.httpWeb3.eth.Contract(contractsConfig.IndicesZapAbi, contractsConfig.IndicesZapAddress);
     }
+    if (contractsConfig.RoutersAddresses) {
+      this.httpRouterContracts = contractsConfig.RoutersAddresses.map(address => {
+        return new this.httpWeb3.eth.Contract(contractsConfig.RouterAbi, address);
+      })
+    }
   }
 
-  async getTokenSymbol(tokenAddress) {
-    tokenAddress = tokenAddress.toLowerCase();
-    if(tokenAddress === '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2') {
-      return 'MKR';
+  // ==============================================================
+  // GENERAL ACTIONS
+  // ==============================================================
+
+  async checkAndActionAsSlasher() {
+    const timestamp = await this.getTimestamp();
+    console.log('checkAndActionAsSlasher', this.currentUserId, await this.getActualReporterUserId());
+    const [curUser, reporterUser, lastSlasherUpdate, {minReportInterval, maxReportInterval}] = await Promise.all([
+      this.getUserById(this.currentUserId),
+      this.getUserById(await this.getActualReporterUserId()),
+      this.getLastSlasherUpdate(this.currentUserId),
+      this.getOracleReportIntervals()
+    ]);
+    const intervalsDiff = maxReportInterval - minReportInterval;
+    console.log('curUser.deposit', curUser.deposit, 'reporterUser.deposit', reporterUser.deposit);
+    if(curUser.deposit > reporterUser.deposit) {
+      return this.oracleSetReporter();
     }
-    if(tokenAddress === '0x0000000000000000000000000000000000000000') {
-      return 'ETH';
+    const symbolToSlash = await this.getSymbolsForSlash();
+    if(symbolToSlash.length) {
+      if(timestamp > intervalsDiff + lastSlasherUpdate) {
+        return this.oraclePokeFromSlasher(symbolToSlash);
+      }
+    } else if(timestamp > maxReportInterval + lastSlasherUpdate) {
+      return this.oracleSlasherUpdate();
     }
-    if(!_.isUndefined(this.symbolsCache[tokenAddress])) {
-      return this.symbolsCache[tokenAddress];
-    }
-    const tokenContract = new this.httpWeb3.eth.Contract([{
-      constant: true,
-      inputs: [],
-      name: "_symbol",
-      outputs: [{ name: "", type: "string" }],
-      payable: false,
-      stateMutability: "view",
-      type: "function",
-      signature: "0xb09f1266",
-    }, {
-      constant: true,
-      inputs: [],
-      name: "symbol",
-      outputs: [{ name: "", type: "string" }],
-      payable: false,
-      stateMutability: "view",
-      type: "function",
-    }], tokenAddress);
-    let symbol;
-    try {
-      symbol = await tokenContract.methods.symbol().call();
-    } catch (e) {
-      symbol = await tokenContract.methods._symbol().call().catch(() => null);
-    }
-    this.symbolsCache[tokenAddress] = symbol;
-    return symbol;
   }
 
-  async getPoolsToRebalance() {
+  async checkAndActionAsReporter() {
+    console.log('checkAndActionAsReporter');
+
+    const symbolsToReport = await this.getSymbolForReport();
+    if(symbolsToReport.length) {
+      await this.oraclePokeFromReporter(symbolsToReport);
+    }
+    if (this.httpWeightsStrategyContract) {
+      const poolsToRebalance = await this.getWeightStrategyPoolsToRebalance();
+      if(poolsToRebalance.length) {
+        await this.weightsStrategyPokeFromReporter(poolsToRebalance);
+      }
+    }
+    if (this.httpIndicesZapContract) {
+      const rounds = await this.getReadyToExecuteRounds();
+      const roundsToSupply = await this.filterRoundsToSupply(rounds);
+      if (roundsToSupply.length) {
+        await this.indicesZapSupplyRedeemPokeFromReporter(roundsToSupply.map(r => r.key));
+      }
+      const roundsToClain = await this.filterRoundsToClaim(rounds);
+      if (roundsToClain.length) {
+        await this.indicesZapClaimPokeFromReporter(roundsToClain[0].key, roundsToClain[0].users);
+      }
+    }
+    if (this.httpRouterContracts) {
+      const routersToPoke = await this.getRoutersToPoke();
+      await pIteration.forEachSeries(routersToPoke, (routerToPoke) => {
+        return this.routerPokeFromReporter(routerToPoke);
+      });
+    }
+  }
+
+  // ==============================================================
+  // STAKING
+  // ==============================================================
+
+  async isCurrentAccountReporter() {
+    return this.currentUserId === await this.getActualReporterUserId();
+  }
+
+  async getActualReporterUserId() {
+    return utils.normalizeNumber(await this.httpStackingContract.methods.getHDHID().call());
+  }
+
+  async getPendingReward() {
+    return utils.weiToEther(await this.httpPokerContract.methods.rewards(this.currentUserId).call());
+  }
+
+  async getCreditOf(clientContract) {
+    return utils.weiToEther(await this.httpPokerContract.methods.creditOf(clientContract).call());
+  }
+
+  async getUserById(userId) {
+    return this.httpStackingContract.methods.users(userId).call().then(async t => ({
+      deposit: utils.weiToEther(t.deposit),
+      adminKey: t.adminKey,
+      pokerKey: t.pokerKey,
+      financierKey: t.financierKey
+    }));
+  }
+
+  async getUserIdByPokerAddress(pokerKey) {
+    pokerKey = pokerKey.toLowerCase();
+    const fromBlock = this.getFromBlock(this.httpStackingContract);
+    const userCreated = await this.httpStackingContract.getPastEvents('CreateUser', { fromBlock, filter: { pokerKey } }).then(events => events[0]);
+
+    const userUpdated = _.last(await this.httpStackingContract.getPastEvents('UpdateUser', { fromBlock, filter: { pokerKey } }));
+
+    let userId;
+    if(userUpdated && (!userCreated || userUpdated.blockNumber > userCreated.blockNumber)) {
+      userId = utils.normalizeNumber(userUpdated.returnValues.userId);
+    } else if(userCreated) {
+      userId = utils.normalizeNumber(userCreated.returnValues.userId);
+    } else {
+      return null;
+    }
+    const user = await this.getUserById(userId);
+    return user && user.pokerKey.toLowerCase() === pokerKey ? userId : null;
+  }
+
+  // ==============================================================
+  // ROUTERS
+  // ==============================================================
+
+  async getRoutersToPoke() {
+    const timestamp = await this.getTimestamp();
+    return pIteration.filter(this.httpRouterContracts, async (routerContract) => {
+      let [{min: minReportInterval, max: maxReportInterval}, lastRebalancedAt, reserveStatus] = await Promise.all([
+        this.httpPokerContract.methods.getMinMaxReportIntervals(routerContract._address).call(),
+        routerContract.methods.lastRebalancedAt().then(r => utils.normalizeNumber(r)),
+        routerContract.methods.getReserveStatusForStakedBalance()
+      ]);
+      minReportInterval = utils.normalizeNumber(minReportInterval);
+      maxReportInterval = utils.normalizeNumber(maxReportInterval);
+      const diff = timestamp - lastRebalancedAt;
+      return reserveStatus.forceRebalance || diff > minReportInterval;
+    })
+  }
+
+  async routerPokeFromReporter(contract) {
+    console.log('routerPokeFromReporter');
+    return this.sendMethod(
+      contract,
+      'pokeFromReporter',
+      [this.currentUserId, true, this.getPokeOpts()],
+      config.poker.privateKey
+    );
+  }
+
+  // ==============================================================
+  // WEIGHT STRATEGY
+  // ==============================================================
+
+  async getWeightStrategyPoolsToRebalance() {
     const [{minReportInterval}, pools] = await Promise.all([
       this.getWeightsStrategyReportIntervals(),
-      this.getActivePools(),
+      this.getWeightStrategyActivePools(),
     ]);
     const timestamp = await this.getTimestamp();
     return pools.filter(p => {
@@ -133,8 +242,8 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     }).map(p => p.address);
   }
 
-  async getActivePools() {
-    return this.getActivePoolsAddresses().then(addresses => pIteration.map(addresses, (a) => this.getWeightsStrategyPool(a)));
+  async getWeightStrategyActivePools() {
+    return this.getWeightStrategyActivePoolsAddresses().then(addresses => pIteration.map(addresses, (a) => this.getWeightsStrategyPool(a)));
   }
 
   async getWeightsStrategyPool(poolAddress) {
@@ -145,7 +254,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     }));
   }
 
-  async getActivePoolsAddresses() {
+  async getWeightStrategyActivePoolsAddresses() {
     return this.httpWeightsStrategyContract.methods.getActivePoolsList().call();
   }
 
@@ -157,21 +266,19 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     };
   }
 
-  async isCurrentAccountReporter() {
-    return this.currentUserId === await this.getActualReporterUserId();
+  async weightsStrategyPokeFromReporter(pools) {
+    console.log('weightsStrategyPokeFromReporter', pools);
+    return this.sendMethod(
+      this.httpWeightsStrategyContract,
+      'pokeFromReporter',
+      [this.currentUserId, pools, this.getPokeOpts()],
+      config.poker.privateKey
+    );
   }
 
-  async getActualReporterUserId() {
-    return utils.normalizeNumber(await this.httpOracleStackingContract.methods.getHDHID().call());
-  }
-
-  async getPendingReward() {
-    return utils.weiToEther(await this.httpPokerContract.methods.rewards(this.currentUserId).call());
-  }
-
-  async getCreditOf(clientContract) {
-    return utils.weiToEther(await this.httpPokerContract.methods.creditOf(clientContract).call());
-  }
+  // ==============================================================
+  // ZAP
+  // ==============================================================
 
   async getRoundReadyToExecute(key) {
     return this.httpIndicesZapContract.methods.isRoundReadyToExecute(key).call();
@@ -236,31 +343,30 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     }).then(rounds => rounds.filter(r => r.users.length));
   }
 
-  getFromBlock(contract) {
-    return {
-      '0x646e846b6ee143bde4f329d4165929bbdcf425f5': 11829480,
-      '0x85c6d6b0cd1383cc85e8e36c09d0815daf36b9e9': 12063574
-    }[contract._address.toLowerCase()];
+  async indicesZapSupplyRedeemPokeFromReporter(roundKeys) {
+    roundKeys = roundKeys.slice(0, 1);
+    console.log('indicesZapPokeFromReporter', this.currentUserId, roundKeys, this.getPokeOpts());
+    return this.sendMethod(
+      this.httpIndicesZapContract,
+      'supplyAndRedeemPokeFromReporter',
+      [this.currentUserId, roundKeys, this.getPokeOpts()],
+      config.poker.privateKey
+    );
   }
 
-  async getUserIdByPokerAddress(pokerKey) {
-    pokerKey = pokerKey.toLowerCase();
-    const fromBlock = this.getFromBlock(this.httpOracleStackingContract);
-    const userCreated = await this.httpOracleStackingContract.getPastEvents('CreateUser', { fromBlock, filter: { pokerKey } }).then(events => events[0]);
-
-    const userUpdated = _.last(await this.httpOracleStackingContract.getPastEvents('UpdateUser', { fromBlock, filter: { pokerKey } }));
-
-    let userId;
-    if(userUpdated && (!userCreated || userUpdated.blockNumber > userCreated.blockNumber)) {
-      userId = utils.normalizeNumber(userUpdated.returnValues.userId);
-    } else if(userCreated) {
-      userId = utils.normalizeNumber(userCreated.returnValues.userId);
-    } else {
-      return null;
-    }
-    const user = await this.getUserById(userId);
-    return user && user.pokerKey.toLowerCase() === pokerKey ? userId : null;
+  async indicesZapClaimPokeFromReporter(roundKey, claimForList) {
+    console.log('indicesZapClaimPokeFromReporter', roundKey, claimForList);
+    return this.sendMethod(
+      this.httpIndicesZapContract,
+      'claimPokeFromReporter',
+      [this.currentUserId, roundKey, claimForList.slice(0, 100), this.getPokeOpts()],
+      config.poker.privateKey
+    );
   }
+
+  // ==============================================================
+  // ORACLE
+  // ==============================================================
 
   async getTokensCount() {
     return utils.normalizeNumber(await this.httpOracleContract.methods.numTokens().call());
@@ -279,20 +385,11 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     }));
   }
 
-  async getUserById(userId) {
-    return this.httpOracleStackingContract.methods.users(userId).call().then(async t => ({
-      deposit: utils.weiToEther(t.deposit),
-      adminKey: t.adminKey,
-      pokerKey: t.pokerKey,
-      financierKey: t.financierKey
-    }));
-  }
-
   async getTokens() {
     const arr = Array.from(Array(await this.getTokensCount()).keys());
     return pIteration
-        .map(arr, (i) => this.getTokenByIndex(i))
-        .then(tokens => tokens.filter(t => t.priceSource === 2));
+      .map(arr, (i) => this.getTokenByIndex(i))
+      .then(tokens => tokens.filter(t => t.priceSource === 2));
   }
 
   async getTokensSymbols() {
@@ -322,7 +419,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
 
   async getLastSlasherUpdate(userId) {
     return this.httpOracleContract.methods.lastSlasherUpdates(userId).call()
-        .then(slasherUpdate => utils.normalizeNumber(slasherUpdate));
+      .then(slasherUpdate => utils.normalizeNumber(slasherUpdate));
   }
 
   async getOracleReportIntervals() {
@@ -361,151 +458,12 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     }).map(p => p.token.symbol));
   }
 
-  async getNetworkId() {
-    return utils.normalizeNumber(await this.httpWeb3.eth.net.getId());
-  }
-
-  async getEthBalance(userAddress) {
-    return utils.weiToEther(await this.httpWeb3.eth.getBalance(userAddress));
-  }
-
-  async getTimestamp() {
-    const lastBlockNumber = (await this.getCurrentBlock()) - 1;
-    return this.getBlockTimestamp(lastBlockNumber).catch((e) => {
-      return new Promise((resolve) => {
-        setTimeout(() => resolve(this.getBlockTimestamp(lastBlockNumber)), 5000);
-      });
-    })
-  }
-
-  async getBlockTimestamp(blockNumber) {
-    return utils.normalizeNumber((await this.httpWeb3.eth.getBlock(blockNumber)).timestamp);
-  }
-
-  async getCurrentBlock() {
-    return utils.normalizeNumber(await this.httpWeb3.eth.getBlockNumber());
-  }
-
-  async getGasPrice() {
-    if (this.networkId === 1) {
-      try {
-        const { data: gasData } = await axios.get('https://etherchain.org/api/gasPriceOracle');
-        return utils.gweiToWei(parseFloat(gasData.standard) + 5);
-      } catch (e) {
-        return Math.round(parseInt((await this.httpWeb3.eth.getGasPrice()).toString(10)) * 1.5);
-      }
-    } else {
-      return utils.gweiToWei(_.random(10, 17));
-    }
-  }
-
-  getCurrentPokerAddress() {
-    return config.poker.address;
-  }
-
-  getDelayUntilNewTransaction() {
-    return config.delayUntilNewTransaction;
-  }
-
-  async checkAndActionAsSlasher() {
-    const timestamp = await this.getTimestamp();
-    console.log('checkAndActionAsSlasher', this.currentUserId, await this.getActualReporterUserId());
-    const [curUser, reporterUser, lastSlasherUpdate, {minReportInterval, maxReportInterval}] = await Promise.all([
-        this.getUserById(this.currentUserId),
-        this.getUserById(await this.getActualReporterUserId()),
-        this.getLastSlasherUpdate(this.currentUserId),
-        this.getOracleReportIntervals()
-    ]);
-    const intervalsDiff = maxReportInterval - minReportInterval;
-    console.log('curUser.deposit', curUser.deposit, 'reporterUser.deposit', reporterUser.deposit);
-    if(curUser.deposit > reporterUser.deposit) {
-      return this.setReporter();
-    }
-    const symbolToSlash = await this.getSymbolsForSlash();
-    if(symbolToSlash.length) {
-      if(timestamp > intervalsDiff + lastSlasherUpdate) {
-        return this.pokeFromSlasher(symbolToSlash);
-      }
-    } else if(timestamp > maxReportInterval + lastSlasherUpdate) {
-      return this.slasherUpdate();
-    }
-  }
-
-  async checkAndActionAsReporter() {
-    console.log('checkAndActionAsReporter');
-
-    const symbolsToReport = await this.getSymbolForReport();
-    if(symbolsToReport.length) {
-      await this.oraclePokeFromReporter(symbolsToReport);
-    }
-    if (this.httpWeightsStrategyContract) {
-      const poolsToRebalance = await this.getPoolsToRebalance();
-      if(poolsToRebalance.length) {
-        await this.weightsStrategyPokeFromReporter(poolsToRebalance);
-      }
-    }
-    if (this.httpIndicesZapContract) {
-      const rounds = await this.getReadyToExecuteRounds();
-      const roundsToSupply = await this.filterRoundsToSupply(rounds);
-      if (roundsToSupply.length) {
-        await this.indicesZapSupplyRedeemPokeFromReporter(roundsToSupply.map(r => r.key));
-      }
-      const roundsToClain = await this.filterRoundsToClaim(rounds);
-      if (roundsToClain.length) {
-        await this.indicesZapClaimPokeFromReporter(roundsToClain[0].key, roundsToClain[0].users);
-      }
-    }
-  }
-
-  getPokeOpts() {
-    return this.httpWeb3.eth.abi.encodeParameter(
-        {
-          PowerPokeRewardOpts: {
-            to: 'address',
-            compensateInETH: 'bool'
-          },
-        },
-        config.poker.opts
-    );
-  }
-
-  async pokeFromSlasher(symbols) {
+  async oraclePokeFromSlasher(symbols) {
     console.log('pokeFromSlasher', symbols);
     return this.sendMethod(
-        this.httpOracleContract,
-        'pokeFromSlasher',
-        [this.currentUserId, symbols, this.getPokeOpts()],
-        config.poker.privateKey
-    );
-  }
-
-  async weightsStrategyPokeFromReporter(pools) {
-    console.log('weightsStrategyPokeFromReporter', pools);
-    return this.sendMethod(
-      this.httpWeightsStrategyContract,
-      'pokeFromReporter',
-      [this.currentUserId, pools, this.getPokeOpts()],
-      config.poker.privateKey
-    );
-  }
-
-  async indicesZapSupplyRedeemPokeFromReporter(roundKeys) {
-    roundKeys = roundKeys.slice(0, 1);
-    console.log('indicesZapPokeFromReporter', this.currentUserId, roundKeys, this.getPokeOpts());
-    return this.sendMethod(
-      this.httpIndicesZapContract,
-      'supplyAndRedeemPokeFromReporter',
-      [this.currentUserId, roundKeys, this.getPokeOpts()],
-      config.poker.privateKey
-    );
-  }
-
-  async indicesZapClaimPokeFromReporter(roundKey, claimForList) {
-    console.log('indicesZapClaimPokeFromReporter', roundKey, claimForList);
-    return this.sendMethod(
-      this.httpIndicesZapContract,
-      'claimPokeFromReporter',
-      [this.currentUserId, roundKey, claimForList.slice(0, 100), this.getPokeOpts()],
+      this.httpOracleContract,
+      'pokeFromSlasher',
+      [this.currentUserId, symbols, this.getPokeOpts()],
       config.poker.privateKey
     );
   }
@@ -520,7 +478,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     );
   }
 
-  async poke(symbols) {
+  async oraclePoke(symbols) {
     console.log('poke', symbols);
     return this.sendMethod(
         this.httpOracleContract,
@@ -530,7 +488,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     );
   }
 
-  async slasherUpdate() {
+  async oracleSlasherUpdate() {
     console.log('slasherUpdate');
     return this.sendMethod(
         this.httpOracleContract,
@@ -540,15 +498,19 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     );
   }
 
-  async setReporter() {
+  async oracleSetReporter() {
     console.log('setReporter');
     return this.sendMethod(
-        this.httpOracleStackingContract,
+        this.httpStackingContract,
         'setReporter',
         [this.currentUserId],
         config.poker.privateKey
     );
   }
+
+  // ==============================================================
+  // UTIL
+  // ==============================================================
 
   async sendMethod(contract, methodName, args, fromPrivateKey, nonce = null, gasPriceMul = 1) {
     const contractAddress = contract._address;
@@ -637,7 +599,6 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return this.getTransactionStatusByReceipt(await this.httpWeb3.eth.getTransactionReceipt(txHash));
   }
 
-
   async getTransactionStatusByReceipt(receipt) {
     if (!receipt) {
       return 'not_found';
@@ -694,6 +655,25 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       return !!abiMethod;
     });
     return abiMethod;
+  }
+
+  getPokeOpts() {
+    return this.httpWeb3.eth.abi.encodeParameter(
+      {
+        PowerPokeRewardOpts: {
+          to: 'address',
+          compensateInETH: 'bool'
+        },
+      },
+      config.poker.opts
+    );
+  }
+
+  getFromBlock(contract) {
+    return {
+      '0x646e846b6ee143bde4f329d4165929bbdcf425f5': 11829480,
+      '0x85c6d6b0cd1383cc85e8e36c09d0815daf36b9e9': 12063574
+    }[contract._address.toLowerCase()];
   }
 
   convertValuesByInputs(inputs, decoded) {
@@ -813,5 +793,90 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
 
   onTransaction(callback) {
     this.transactionCallback = callback;
+  }
+
+  async getNetworkId() {
+    return utils.normalizeNumber(await this.httpWeb3.eth.net.getId());
+  }
+
+  async getEthBalance(userAddress) {
+    return utils.weiToEther(await this.httpWeb3.eth.getBalance(userAddress));
+  }
+
+  async getTimestamp() {
+    const lastBlockNumber = (await this.getCurrentBlock()) - 1;
+    return this.getBlockTimestamp(lastBlockNumber).catch((e) => {
+      return new Promise((resolve) => {
+        setTimeout(() => resolve(this.getBlockTimestamp(lastBlockNumber)), 5000);
+      });
+    })
+  }
+
+  async getBlockTimestamp(blockNumber) {
+    return utils.normalizeNumber((await this.httpWeb3.eth.getBlock(blockNumber)).timestamp);
+  }
+
+  async getCurrentBlock() {
+    return utils.normalizeNumber(await this.httpWeb3.eth.getBlockNumber());
+  }
+
+  async getGasPrice() {
+    if (this.networkId === 1) {
+      try {
+        const { data: gasData } = await axios.get('https://etherchain.org/api/gasPriceOracle');
+        return utils.gweiToWei(parseFloat(gasData.standard) + 5);
+      } catch (e) {
+        return Math.round(parseInt((await this.httpWeb3.eth.getGasPrice()).toString(10)) * 1.5);
+      }
+    } else {
+      return utils.gweiToWei(_.random(10, 17));
+    }
+  }
+
+  getCurrentPokerAddress() {
+    return config.poker.address;
+  }
+
+  getDelayUntilNewTransaction() {
+    return config.delayUntilNewTransaction;
+  }
+
+  async getTokenSymbol(tokenAddress) {
+    tokenAddress = tokenAddress.toLowerCase();
+    if(tokenAddress === '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2') {
+      return 'MKR';
+    }
+    if(tokenAddress === '0x0000000000000000000000000000000000000000') {
+      return 'ETH';
+    }
+    if(!_.isUndefined(this.symbolsCache[tokenAddress])) {
+      return this.symbolsCache[tokenAddress];
+    }
+    const tokenContract = new this.httpWeb3.eth.Contract([{
+      constant: true,
+      inputs: [],
+      name: "_symbol",
+      outputs: [{ name: "", type: "string" }],
+      payable: false,
+      stateMutability: "view",
+      type: "function",
+      signature: "0xb09f1266",
+    }, {
+      constant: true,
+      inputs: [],
+      name: "symbol",
+      outputs: [{ name: "", type: "string" }],
+      payable: false,
+      stateMutability: "view",
+      type: "function",
+    }], tokenAddress);
+    let symbol;
+    try {
+      symbol = await tokenContract.methods.symbol().call();
+    } catch (e) {
+      symbol = await tokenContract.methods._symbol().call().catch(() => null);
+    }
+    this.symbolsCache[tokenAddress] = symbol;
+    return symbol;
   }
 }
