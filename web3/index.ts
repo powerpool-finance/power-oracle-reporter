@@ -578,6 +578,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     if (typeof options.nonce === "string") {
       options.nonce = this.httpWeb3.utils.hexToNumber(options.nonce);
     }
+    console.log('options.nonce', options.nonce);
 
     const gasWith1Gwei = Math.round((await method.estimateGas({...options, gasPrice: utils.gweiToWei(1)})) * 1.1);
 
