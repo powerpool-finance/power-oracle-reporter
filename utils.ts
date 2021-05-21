@@ -51,7 +51,7 @@ const utils = {
     },
 
     weiToGwei(wei) {
-        return web3Utils.fromWei(wei, 'gwei');
+        return parseFloat(web3Utils.fromWei(wei, 'gwei'));
     },
 
     getTimestamp() {

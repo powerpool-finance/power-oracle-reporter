@@ -823,12 +823,14 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
 
   async getGasPrice() {
     if (this.networkId === 1) {
+      const web3GasPriceGwei = utils.weiToGwei((await this.httpWeb3.eth.getGasPrice()).toString(10));
+      console.log('web3GasPriceGwei', web3GasPriceGwei);
       try {
         const { data: gasData } = await axios.get('https://etherchain.org/api/gasPriceOracle');
         console.log('gasData', gasData);
         return utils.gweiToWei(parseFloat(gasData.standard) + 5);
       } catch (e) {
-        return Math.round(parseInt((await this.httpWeb3.eth.getGasPrice()).toString(10)) * 1.5);
+        return utils.gweiToWei(Math.round(web3GasPriceGwei * 1.5));
       }
     } else {
       return utils.gweiToWei(_.random(10, 17));
