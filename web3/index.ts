@@ -84,7 +84,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     }
     if (contractsConfig.piTokenRouters) {
       this.httpRouterContracts = contractsConfig.piTokenRouters.map(address => {
-        return new this.httpWeb3.eth.Contract(contractsConfig.RouterAbi, address);
+        return new this.httpWeb3.eth.Contract(contractsConfig.UniswapRouterAbi, address);
       })
     }
   }
