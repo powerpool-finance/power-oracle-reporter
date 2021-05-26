@@ -82,8 +82,8 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     if (contractsConfig.IndicesZapAddress) {
       this.httpIndicesZapContract = new this.httpWeb3.eth.Contract(contractsConfig.IndicesZapAbi, contractsConfig.IndicesZapAddress);
     }
-    if (contractsConfig.RoutersAddresses) {
-      this.httpRouterContracts = contractsConfig.RoutersAddresses.map(address => {
+    if (contractsConfig.piTokenRouters) {
+      this.httpRouterContracts = contractsConfig.piTokenRouters.map(address => {
         return new this.httpWeb3.eth.Contract(contractsConfig.RouterAbi, address);
       })
     }
@@ -297,6 +297,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   async getReadyToExecuteRounds() {
     const fromBlock = (await this.getCurrentBlock()) - 10000;
     const roundInited = await this.httpIndicesZapContract.getPastEvents('InitRound', { fromBlock });
+    roundInited.push({returnValues: {key: '0xe23b312407ba51a7a5a6c5ebdd2c95df80622f01c5164467168787730b53362d'}});
     const readyToExecute = [];
     await pIteration.forEachSeries(_.chunk(roundInited, 10), (chunk) => {
       return pIteration.forEach(chunk, async (e) => {
