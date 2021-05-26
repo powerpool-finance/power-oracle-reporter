@@ -207,6 +207,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   async getRoutersToPoke() {
     const timestamp = await this.getTimestamp();
     return pIteration.filter(this.httpRouterContracts, async (routerContract) => {
+      console.log('routerContract.methods', routerContract.methods);
       let [{min: minReportInterval, max: maxReportInterval}, lastRebalancedAt, reserveStatus] = await Promise.all([
         this.httpPokerContract.methods.getMinMaxReportIntervals(routerContract._address).call(),
         routerContract.methods.lastRebalancedAt().then(r => utils.normalizeNumber(r)),
