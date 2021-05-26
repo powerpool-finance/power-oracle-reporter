@@ -84,7 +84,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     }
     if (contractsConfig.piTokenRouters) {
       this.httpRouterContracts = contractsConfig.piTokenRouters.map(address => {
-        return new this.httpWeb3.eth.Contract(contractsConfig.UniswapRouterAbi, address);
+        return new this.httpWeb3.eth.Contract(contractsConfig.PiTokenSushiRouterAbi, address);
       })
     }
   }
@@ -207,7 +207,6 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   async getRoutersToPoke() {
     const timestamp = await this.getTimestamp();
     return pIteration.filter(this.httpRouterContracts, async (routerContract) => {
-      console.log('routerContract.methods', routerContract.methods);
       let [{min: minReportInterval, max: maxReportInterval}, lastRebalancedAt, reserveStatus] = await Promise.all([
         this.httpPokerContract.methods.getMinMaxReportIntervals(routerContract._address).call(),
         routerContract.methods.lastRebalancedAt().then(r => utils.normalizeNumber(r)),
