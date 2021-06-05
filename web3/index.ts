@@ -136,9 +136,9 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       if (roundsToSupply.length) {
         await this.indicesZapSupplyRedeemPokeFromReporter(roundsToSupply.map(r => r.key));
       }
-      const roundsToClain = await this.filterRoundsToClaim(rounds);
-      if (roundsToClain.length) {
-        await this.indicesZapClaimPokeFromReporter(roundsToClain[0].key, roundsToClain[0].users);
+      const roundsToClaim = await this.filterRoundsToClaim(rounds);
+      if (roundsToClaim.length) {
+        await this.indicesZapClaimPokeFromReporter(roundsToClaim[0].key, roundsToClaim[0].users);
       }
     }
     if (this.httpRouterContracts) {
@@ -308,6 +308,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         }
       });
     });
+    readyToExecute.push({key: '0x862da9e514cf6971f9f107d74a3ddc680d9c3c503e486e6ca77eb643f0a3a6d8', totalOutputAmount: '0'});
     return readyToExecute;
   }
 
