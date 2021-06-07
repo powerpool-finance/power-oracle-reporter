@@ -297,12 +297,13 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   async getReadyToExecuteRounds() {
     const fromBlock = (await this.getCurrentBlock()) - 50000;
     const roundInited = await this.httpIndicesZapContract.getPastEvents('InitRound', { fromBlock });
+    console.log('roundInited', roundInited.map(r => r.returnValues.key));
     const readyToExecute = [];
     await pIteration.forEachSeries(_.chunk(roundInited, 10), (chunk) => {
       return pIteration.forEach(chunk, async (e) => {
         if (await this.getRoundReadyToExecute(e.returnValues.key)) {
           const round = await this.getRound(e.returnValues.key);
-          if (round.totalInputAmount.toString() !== '0' && e.returnValues.key !== '0x862da9e514cf6971f9f107d74a3ddc680d9c3c503e486e6ca77eb643f0a3a6d8') {
+          if (round.totalInputAmount.toString() !== '0') {
             readyToExecute.push(round);
           }
         }
