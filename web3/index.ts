@@ -308,7 +308,6 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         }
       });
     });
-    readyToExecute.push({key: '0x862da9e514cf6971f9f107d74a3ddc680d9c3c503e486e6ca77eb643f0a3a6d8', totalOutputAmount: '0'});
     return readyToExecute;
   }
 
