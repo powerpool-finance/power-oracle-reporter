@@ -82,9 +82,9 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     if (contractsConfig.IndicesZapAddress) {
       this.httpIndicesZapContract = new this.httpWeb3.eth.Contract(contractsConfig.IndicesZapAbi, contractsConfig.IndicesZapAddress);
     }
-    if (contractsConfig.RoutersAddresses) {
-      this.httpRouterContracts = contractsConfig.RoutersAddresses.map(address => {
-        return new this.httpWeb3.eth.Contract(contractsConfig.RouterAbi, address);
+    if (contractsConfig.piTokenRouters) {
+      this.httpRouterContracts = contractsConfig.piTokenRouters.map(address => {
+        return new this.httpWeb3.eth.Contract(contractsConfig.PiTokenSushiRouterAbi, address);
       })
     }
   }
@@ -136,9 +136,9 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       if (roundsToSupply.length) {
         await this.indicesZapSupplyRedeemPokeFromReporter(roundsToSupply.map(r => r.key));
       }
-      const roundsToClain = await this.filterRoundsToClaim(rounds);
-      if (roundsToClain.length) {
-        await this.indicesZapClaimPokeFromReporter(roundsToClain[0].key, roundsToClain[0].users);
+      const roundsToClaim = await this.filterRoundsToClaim(rounds);
+      if (roundsToClaim.length) {
+        await this.indicesZapClaimPokeFromReporter(roundsToClaim[0].key, roundsToClaim[0].users);
       }
     }
     if (this.httpRouterContracts) {
@@ -166,7 +166,10 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async getCreditOf(clientContract) {
-    return utils.weiToEther(await this.httpPokerContract.methods.creditOf(clientContract).call());
+    return utils.weiToEther(await this.httpPokerContract.methods.creditOf(clientContract).call().then(r => {
+      console.log('getCreditOf', clientContract, r);
+      return r;
+    }));
   }
 
   async getUserById(userId) {
@@ -206,8 +209,8 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return pIteration.filter(this.httpRouterContracts, async (routerContract) => {
       let [{min: minReportInterval, max: maxReportInterval}, lastRebalancedAt, reserveStatus] = await Promise.all([
         this.httpPokerContract.methods.getMinMaxReportIntervals(routerContract._address).call(),
-        routerContract.methods.lastRebalancedAt().then(r => utils.normalizeNumber(r)),
-        routerContract.methods.getReserveStatusForStakedBalance()
+        routerContract.methods.lastRebalancedAt().call().then(r => utils.normalizeNumber(r)),
+        routerContract.methods.getReserveStatusForStakedBalance().call()
       ]);
       minReportInterval = utils.normalizeNumber(minReportInterval);
       maxReportInterval = utils.normalizeNumber(maxReportInterval);
@@ -221,7 +224,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return this.sendMethod(
       contract,
       'pokeFromReporter',
-      [this.currentUserId, true, this.getPokeOpts()],
+      [this.currentUserId, false, this.getPokeOpts()],
       config.poker.privateKey
     );
   }
@@ -292,7 +295,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async getReadyToExecuteRounds() {
-    const fromBlock = (await this.getCurrentBlock()) - 10000;
+    const fromBlock = (await this.getCurrentBlock()) - 50000;
     const roundInited = await this.httpIndicesZapContract.getPastEvents('InitRound', { fromBlock });
     const readyToExecute = [];
     await pIteration.forEachSeries(_.chunk(roundInited, 10), (chunk) => {
@@ -577,6 +580,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     if (typeof options.nonce === "string") {
       options.nonce = this.httpWeb3.utils.hexToNumber(options.nonce);
     }
+    console.log('options.nonce', options.nonce);
 
     const gasWith1Gwei = Math.round((await method.estimateGas({...options, gasPrice: utils.gweiToWei(1)})) * 1.1);
 
@@ -822,11 +826,15 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
 
   async getGasPrice() {
     if (this.networkId === 1) {
+      const web3GasPriceGwei = utils.weiToGwei((await this.httpWeb3.eth.getGasPrice()).toString(10));
       try {
         const { data: gasData } = await axios.get('https://etherchain.org/api/gasPriceOracle');
-        return utils.gweiToWei(parseFloat(gasData.standard) + 5);
+        let gasPrice = parseFloat(gasData.standard);
+        gasPrice = web3GasPriceGwei / 2 > gasPrice ? web3GasPriceGwei : gasPrice + 5;
+        console.log('gasPrice', gasPrice, 'web3GasPriceGwei', web3GasPriceGwei, 'gasData', gasData);
+        return utils.gweiToWei(gasPrice);
       } catch (e) {
-        return Math.round(parseInt((await this.httpWeb3.eth.getGasPrice()).toString(10)) * 1.5);
+        return utils.gweiToWei(web3GasPriceGwei);
       }
     } else {
       return utils.gweiToWei(_.random(10, 17));

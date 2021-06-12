@@ -37,7 +37,7 @@ const utils = {
         return web3Utils.keccak256(str);
     },
 
-    roundNumber(value, roundTo) {
+    roundNumber(value, roundTo = 1) {
         return Math.round(value * 10 ** roundTo) / 10 ** roundTo;
     },
 
@@ -51,7 +51,7 @@ const utils = {
     },
 
     weiToGwei(wei) {
-        return web3Utils.fromWei(wei, 'gwei');
+        return parseFloat(web3Utils.fromWei(wei, 'gwei'));
     },
 
     getTimestamp() {
