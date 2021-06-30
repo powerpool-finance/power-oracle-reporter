@@ -267,7 +267,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return this.sendMethod(
       contract,
       'pokeFromReporter',
-      [this.currentUserId, false, this.getPokeOpts()],
+      [this.currentUserId, this.getPokeOpts()],
       config.poker.privateKey
     );
   }
