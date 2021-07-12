@@ -238,14 +238,14 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return this.sendMethod(
       contract,
       'pokeFromReporter',
-      [this.currentUserId, false, this.getPokeOpts()],
+      [this.currentUserId, true, this.getPokeOpts()],
       config.poker.privateKey
     );
   }
 
 
   // ==============================================================
-  // ROUTERS
+  // REBIND STRATEGY
   // ==============================================================
 
   async getRebindersToPoke() {
