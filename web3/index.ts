@@ -679,11 +679,11 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     const encodedABI = method.encodeABI();
 
     const gweiGasPrice = parseFloat(utils.weiToGwei(gasPrice.toString()));
-    if(gweiGasPrice > parseFloat(config.maxGasPrice)) {
+    if (gweiGasPrice > parseFloat(config.maxGasPrice)) {
       throw new Error('Max Gas Price: ' + Math.round(gweiGasPrice));
     }
 
-    let options: any = { from, gasPrice, nonce, data: encodedABI, to: contractAddress };
+    let options: any = { from, maxFeePerGas: gasPrice, maxPriorityFeePerGas: utils.gweiToWei(2), nonce, data: encodedABI, to: contractAddress };
 
     if (!options.nonce) {
       options.nonce = await this.httpWeb3.eth.getTransactionCount(from);
