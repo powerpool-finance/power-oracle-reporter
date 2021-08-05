@@ -77,7 +77,6 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     this.httpOracleContract = new this.httpWeb3.eth.Contract(contractsConfig.PokeOracleAbi, contractsConfig.PokeOracleAddress);
     this.httpStackingContract = new this.httpWeb3.eth.Contract(contractsConfig.PowerPokeStackingAbi, contractsConfig.PowerPokeStackingAddress);
     this.httpPokerContract = new this.httpWeb3.eth.Contract(contractsConfig.PowerPokeAbi, contractsConfig.PowerPokeAddress);
-    this.httpCvpMakerContract = new this.httpWeb3.eth.Contract(contractsConfig.CvpMakerAbi, contractsConfig.CvpMakerAddress);
 
     if (contractsConfig.WeightsStrategyAddress) {
       this.httpWeightsStrategyContract = new this.httpWeb3.eth.Contract(contractsConfig.WeightsStrategyAbi, contractsConfig.WeightsStrategyAddress);
@@ -94,6 +93,9 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       this.httpRebindStrategyContracts = contractsConfig.rebindStrategyAddresses.map(address => {
         return new this.httpWeb3.eth.Contract(contractsConfig.RebindStrategyAbi, address);
       })
+    }
+    if (contractsConfig.CvpMakerAddress) {
+      this.httpCvpMakerContract = new this.httpWeb3.eth.Contract(contractsConfig.CvpMakerAbi, contractsConfig.CvpMakerAddress);
     }
   }
 
@@ -242,7 +244,6 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       config.poker.privateKey
     );
   }
-
 
   // ==============================================================
   // REBIND STRATEGY
@@ -551,6 +552,74 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         'setReporter',
         [this.currentUserId],
         config.poker.privateKey
+    );
+  }
+
+  // ==============================================================
+  // CVP MAKER
+  // ==============================================================
+
+  async getTokenToMakeCvp() {
+    const timestamp = await this.getTimestamp();
+    let [{min: minReportInterval, max: maxReportInterval}, lastReporterPokeFrom] = await Promise.all([
+      this.httpPokerContract.methods.getMinMaxReportIntervals(this.httpCvpMakerContract._address).call(),
+      this.httpCvpMakerContract.methods.lastReporterPokeFrom().call().then(r => utils.normalizeNumber(r)),
+    ]);
+    minReportInterval = utils.normalizeNumber(minReportInterval);
+    const diff = timestamp - lastReporterPokeFrom;
+    if (diff < minReportInterval){
+      return null;
+    }
+
+    const cvpAmountOut = await this.httpCvpMakerContract.methods.cvpAmountOut().call().then(r => utils.weiToNumber(r, 18));
+
+    const tokens = [
+      '0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9', // AAVE
+      '0x0bc529c00c6401aef6d220be8c6ea1667f6ad93e', // YFI
+      '0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f', // SNX
+      '0x38e4adb44ef08f22f5b5b76a8f0c2d0dcbe7dca1', // CVP
+      '0xc00e94cb662c3520282e6f5717214004a7f26888', // COMP
+      '0x0d438f3b5175bebc262bf23753c1e53d03432bde', // wNXM
+      '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2', // MKR
+      '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984', // UNI
+      '0x6b3595068778dd592e39a122f4f5a5cf09c90fe2', // SUSHI
+      '0x2ba592f78db6436527729929aaf6c908497cb200', // CREAM
+      '0x8ab7404063ec4dbcfd4598215992dc3f8ec853d7', // AKRO
+      '0x429881672b9ae42b8eba0e26cd9c73711b891ca5', // PICKLE
+      '0x1ceb5cb57c4d4e2b2433641b95dd330a33185a44', // KP3R
+      '0x3b96d491f067912d18563d56858ba7d6ec67a6fa', // yvCurve-USDN
+      '0x5fa5b62c8af877cb37031e0a3b2f34a78e3c56a6', // yvCurve-LUSD
+      '0x6ede7f19df5df6ef23bd5b9cedb651580bdf56ca', // yvCurve-BUSD
+      '0xc4daf3b5e2a9e93861c3fbdd25f1e943b8d87417', // yvCurve-USDP
+      '0x26607ac599266b21d13c7acf7942c7701a8b699c', // PIPT
+      '0xb4bebd34f6daafd808f73de0d10235a92fbb6c3d', // YETI
+      '0xfa2562da1bba7b954f26c74725df51fb62646313', // ASSY
+      '0x9ba60ba98413a60db4c651d4afe5c937bbd8044b', // YLA
+    ];
+
+    // let token;
+    // return pIteration.some(tokens, async (t) => {
+    //   const tokenCvpAmountOut = await this.httpCvpMakerContract.methods.cvpAmountOut().call().then(r => utils.weiToNumber(r, 18));
+    //
+    //   let [{min: minReportInterval, max: maxReportInterval}, lastRebalancedAt, reserveStatus] = await Promise.all([
+    //     this.httpPokerContract.methods.getMinMaxReportIntervals(routerContract._address).call(),
+    //     routerContract.methods.lastRebalancedAt().call().then(r => utils.normalizeNumber(r)),
+    //     routerContract.methods.getReserveStatusForStakedBalance().call(),
+    //   ]);
+    //   minReportInterval = utils.normalizeNumber(minReportInterval);
+    //   maxReportInterval = utils.normalizeNumber(maxReportInterval);
+    //   const diff = timestamp - lastRebalancedAt;
+    //   return reserveStatus.forceRebalance || diff > minReportInterval;
+    // })
+  }
+
+  async cvpMakerPokeFromReporter(token) {
+    console.log('cvpMakerPokeFromReporter');
+    return this.sendMethod(
+      this.httpCvpMakerContract,
+      'swapFromReporter',
+      [this.currentUserId, token, this.getPokeOpts()],
+      config.poker.privateKey
     );
   }
 
