@@ -678,7 +678,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async getTransaction(method, contractAddress, from, privateKey, nonce = null, gasPriceMul = 1) {
-    const maxFeePerGas = Math.round((await this.getGasPrice()) * gasPriceMul);
+    const maxFeePerGas = await this.getGasPrice();
     const encodedABI = method.encodeABI();
 
     const gweiGasPrice = parseFloat(utils.weiToGwei(maxFeePerGas.toString()));
@@ -698,7 +698,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     }
     console.log('options.nonce', options.nonce);
 
-    const gasWith1Gwei = Math.round((await method.estimateGas({...options, maxFeePerGas: utils.gweiToWei(1), maxPriorityFeePerGas: utils.gweiToWei(1)})) * 1.1);
+    const gasWith1Gwei = Math.round((await method.estimateGas({...options, maxFeePerGas, maxPriorityFeePerGas: utils.gweiToWei(1)})) * 1.1);
 
     const needBalance = utils.mul(gasWith1Gwei, maxFeePerGas);
     if(!utils.gte(await this.httpWeb3.eth.getBalance(from), needBalance)) {
