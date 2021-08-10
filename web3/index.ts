@@ -678,7 +678,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async getTransaction(method, contractAddress, from, privateKey, nonce = null, gasPriceMul = 1) {
-    const maxFeePerGas = await this.getGasPrice();
+    const maxFeePerGas = Math.round((await this.getGasPrice()) * gasPriceMul);
     const encodedABI = method.encodeABI();
 
     const gweiGasPrice = parseFloat(utils.weiToGwei(maxFeePerGas.toString()));
