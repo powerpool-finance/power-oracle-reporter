@@ -678,15 +678,16 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async getTransaction(method, contractAddress, from, privateKey, nonce = null, gasPriceMul = 1) {
-    const gasPrice = Math.round((await this.getGasPrice()) * gasPriceMul);
+    const maxFeePerGas = await this.getGasPrice();
     const encodedABI = method.encodeABI();
 
-    const gweiGasPrice = parseFloat(utils.weiToGwei(gasPrice.toString()));
+    const gweiGasPrice = parseFloat(utils.weiToGwei(maxFeePerGas.toString()));
     if (gweiGasPrice > parseFloat(config.maxGasPrice)) {
       throw new Error('Max Gas Price: ' + Math.round(gweiGasPrice));
     }
+    const maxPriorityFeePerGas = utils.gweiToWei(2 * gasPriceMul);
 
-    let options: any = { from, maxFeePerGas: gasPrice, maxPriorityFeePerGas: utils.gweiToWei(2), nonce, data: encodedABI, to: contractAddress };
+    let options: any = { from, maxFeePerGas, maxPriorityFeePerGas, nonce, data: encodedABI, to: contractAddress };
 
     if (!options.nonce) {
       options.nonce = await this.httpWeb3.eth.getTransactionCount(from);
@@ -697,9 +698,9 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     }
     console.log('options.nonce', options.nonce);
 
-    const gasWith1Gwei = Math.round((await method.estimateGas({...options, gasPrice: utils.gweiToWei(1)})) * 1.1);
+    const gasWith1Gwei = Math.round((await method.estimateGas({...options, maxFeePerGas, maxPriorityFeePerGas: utils.gweiToWei(1)})) * 1.1);
 
-    const needBalance = utils.mul(gasWith1Gwei, gasPrice);
+    const needBalance = utils.mul(gasWith1Gwei, maxFeePerGas);
     if(!utils.gte(await this.httpWeb3.eth.getBalance(from), needBalance)) {
       throw new Error('Not enough balance');
     }
