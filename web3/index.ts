@@ -35,6 +35,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   httpPokerContract: any;
   httpWeightsStrategyContract: any;
   httpIndicesZapContract: any;
+  httpCvpMakerContract: any;
   httpRouterContracts: any[];
   httpRebindStrategyContracts: any[];
 
@@ -88,12 +89,13 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         return new this.httpWeb3.eth.Contract(contractsConfig.PiTokenSushiRouterAbi, address);
       })
     }
-    contractsConfig.rebindStrategyAddresses = ['0xea20d1d24bd9ae0e4ad3982f302d8441ca5e5b99'];
-    contractsConfig.RebindStrategyAbi = [{"inputs":[{"internalType":"address","name":"_pool","type":"address"},{"internalType":"address","name":"_usdc","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address[]","name":"poolTokensBefore","type":"address[]"},{"indexed":false,"internalType":"address[]","name":"poolTokensAfter","type":"address[]"}],"name":"ChangePoolTokens","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"poolCurrentTokensCount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"usdcPulled","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"usdcRemainder","type":"uint256"}],"name":"InstantRebind","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"vaultToken","type":"address"},{"indexed":false,"internalType":"address","name":"crvToken","type":"address"},{"indexed":false,"internalType":"uint256","name":"vaultAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"crvAmountExpected","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"crvAmountActual","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"usdcAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"vaultReserve","type":"uint256"}],"name":"PullLiquidity","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"vaultToken","type":"address"},{"indexed":false,"internalType":"address","name":"crvToken","type":"address"},{"indexed":false,"internalType":"uint256","name":"vaultAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"crvAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"usdcAmount","type":"uint256"}],"name":"PushLiquidity","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"SeizeERC20","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"curvePoolRegistry","type":"address"}],"name":"SetCurvePoolRegistry","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"maxWithdrawalLoss","type":"uint256"}],"name":"SetMaxWithdrawalLoss","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"minPulledUSDC","type":"uint256"}],"name":"SetMinPulledUSDC","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"poolController","type":"address"}],"name":"SetPoolController","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"bool","name":"rateChangeDisabled","type":"bool"}],"name":"SetRateChangeDisabled","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"minUSDCRemainder","type":"uint256"},{"indexed":false,"internalType":"bool","name":"useVirtualPriceEstimation","type":"bool"}],"name":"SetStrategyConstraints","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"totalWeight","type":"uint256"}],"name":"SetTotalWeight","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token","type":"address"},{"indexed":false,"internalType":"uint256","name":"oldRate","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"newRate","type":"uint256"}],"name":"SetValueChangeRate","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"vault","type":"address"},{"indexed":true,"internalType":"address","name":"depositor","type":"address"},{"indexed":false,"internalType":"uint8","name":"depositorType","type":"uint8"},{"indexed":false,"internalType":"uint8","name":"depositorTokenLength","type":"uint8"},{"indexed":false,"internalType":"int8","name":"usdcIndex","type":"int8"}],"name":"SetVaultConfig","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address[]","name":"poolTokensBefore","type":"address[]"},{"indexed":false,"internalType":"address[]","name":"poolTokensAfter","type":"address[]"}],"name":"UpdatePool","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token","type":"address"},{"indexed":false,"internalType":"uint256","name":"oldTokenValue","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"newTokenValue","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"lastChangeRate","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"newChangeRate","type":"uint256"}],"name":"UpdatePoolTokenValue","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"pool","type":"address"},{"indexed":true,"internalType":"uint256","name":"timestamp","type":"uint256"},{"indexed":false,"internalType":"address[]","name":"tokens","type":"address[]"},{"indexed":false,"internalType":"uint256[3][]","name":"weightsChange","type":"uint256[3][]"},{"indexed":false,"internalType":"uint256[]","name":"newTokenValues","type":"uint256[]"}],"name":"UpdatePoolWeights","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"vaultToken","type":"address"},{"indexed":false,"internalType":"uint256","name":"crvAmount","type":"uint256"}],"name":"VaultWithdrawFee","type":"event"},{"inputs":[],"name":"BONE","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"BPOW_PRECISION","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"INIT_POOL_SUPPLY","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MAX_BOUND_TOKENS","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MAX_BPOW_BASE","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MAX_FEE","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MAX_IN_RATIO","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MAX_OUT_RATIO","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MAX_TOTAL_WEIGHT","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MAX_WEIGHT","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MIN_BALANCE","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MIN_BOUND_TOKENS","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MIN_BPOW_BASE","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MIN_FEE","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MIN_WEIGHT","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"USDC","outputs":[{"internalType":"contract IERC20","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address[]","name":"_newTokens","type":"address[]"}],"name":"changePoolTokens","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"contract PowerIndexPoolInterface","name":"_pool","type":"address"},{"internalType":"address[]","name":"_tokens","type":"address[]"},{"internalType":"address[]","name":"_piTokens","type":"address[]"},{"internalType":"uint256","name":"_minWPS","type":"uint256"},{"internalType":"uint256","name":"fromTimestamp","type":"uint256"},{"internalType":"uint256","name":"toTimestamp","type":"uint256"}],"name":"computeWeightsChange","outputs":[{"internalType":"uint256[3][]","name":"weightsChange","type":"uint256[3][]"},{"internalType":"uint256","name":"lenToPush","type":"uint256"},{"internalType":"uint256[]","name":"newTokenValues","type":"uint256[]"},{"internalType":"uint256","name":"newTokenValueSum","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"constraints","outputs":[{"internalType":"uint256","name":"minUSDCRemainder","type":"uint256"},{"internalType":"bool","name":"useVirtualPriceEstimation","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"curvePoolRegistry","outputs":[{"internalType":"contract ICurvePoolRegistry","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getPoolTokens","outputs":[{"internalType":"address[]","name":"","type":"address[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"contract PowerIndexPoolInterface","name":"","type":"address"},{"internalType":"address","name":"_token","type":"address"}],"name":"getTVL","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"contract PowerIndexPoolInterface","name":"_pool","type":"address"},{"internalType":"address","name":"_token","type":"address"}],"name":"getTokenValue","outputs":[{"internalType":"uint256","name":"value","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_token","type":"address"},{"internalType":"uint256","name":"oldTokenValue","type":"uint256"},{"internalType":"uint256","name":"newTokenValue","type":"uint256"}],"name":"getValueChangeRate","outputs":[{"internalType":"uint256","name":"lastChangeRate","type":"uint256"},{"internalType":"uint256","name":"newChangeRate","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_token","type":"address"},{"internalType":"address","name":"_crvToken","type":"address"},{"internalType":"uint256","name":"_amount","type":"uint256"}],"name":"getVaultUsdcEstimation","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_token","type":"address"},{"internalType":"uint256","name":"_amount","type":"uint256"}],"name":"getVaultVirtualPriceEstimation","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"fromDenorm","type":"uint256"},{"internalType":"uint256","name":"targetDenorm","type":"uint256"},{"internalType":"uint256","name":"fromTimestamp","type":"uint256"},{"internalType":"uint256","name":"targetTimestamp","type":"uint256"}],"name":"getWeightPerSecond","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"pure","type":"function"},{"inputs":[{"internalType":"address","name":"_powerPoke","type":"address"},{"internalType":"address","name":"_curvePoolRegistry","type":"address"},{"internalType":"address","name":"_poolController","type":"address"},{"internalType":"uint256","name":"_maxWithdrawalLoss","type":"uint256"},{"components":[{"internalType":"uint256","name":"minUSDCRemainder","type":"uint256"},{"internalType":"bool","name":"useVirtualPriceEstimation","type":"bool"}],"internalType":"struct YearnVaultInstantRebindStrategy.StrategyConstraints","name":"_constraints","type":"tuple"}],"name":"initialize","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"lastUpdate","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"lastValue","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"maxWithdrawalLoss","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"minPulledUSDC","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"oracle","outputs":[{"internalType":"contract IPowerOracle","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_reporterId","type":"uint256"},{"internalType":"bytes","name":"_rewardOpts","type":"bytes"}],"name":"pokeFromReporter","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_reporterId","type":"uint256"},{"internalType":"bytes","name":"_rewardOpts","type":"bytes"}],"name":"pokeFromSlasher","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"pool","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"poolController","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"powerPoke","outputs":[{"internalType":"contract IPowerPoke","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"rateChangeDisabled","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"contract IERC20[]","name":"_tokens","type":"address[]"},{"internalType":"address[]","name":"_tos","type":"address[]"}],"name":"removeApprovals","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address[]","name":"_tokens","type":"address[]"},{"internalType":"address[]","name":"_tos","type":"address[]"},{"internalType":"uint256[]","name":"_amounts","type":"uint256[]"}],"name":"seizeERC20","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_curvePoolRegistry","type":"address"}],"name":"setCurvePoolRegistry","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_maxWithdrawalLoss","type":"uint256"}],"name":"setMaxWithdrawalLoss","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_minPulledUSDC","type":"uint256"}],"name":"setMinPulledUSDC","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_poolController","type":"address"}],"name":"setPoolController","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bool","name":"_disabled","type":"bool"}],"name":"setRateUpdateDisabled","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"components":[{"internalType":"uint256","name":"minUSDCRemainder","type":"uint256"},{"internalType":"bool","name":"useVirtualPriceEstimation","type":"bool"}],"internalType":"struct YearnVaultInstantRebindStrategy.StrategyConstraints","name":"_constraints","type":"tuple"}],"name":"setStrategyConstraints","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_totalWeight","type":"uint256"}],"name":"setTotalWeight","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address[]","name":"_tokens","type":"address[]"},{"internalType":"uint256[]","name":"_newTokenRates","type":"uint256[]"}],"name":"setValueChangeRates","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_vault","type":"address"},{"internalType":"address","name":"_depositor","type":"address"},{"internalType":"uint8","name":"_depositorType","type":"uint8"},{"internalType":"uint8","name":"_depositorTokenLength","type":"uint8"},{"internalType":"int8","name":"_usdcIndex","type":"int8"}],"name":"setVaultConfig","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"syncPoolTokens","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"totalWeight","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"valueChangeRate","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"vaultConfig","outputs":[{"internalType":"address","name":"depositor","type":"address"},{"internalType":"uint8","name":"depositorType","type":"uint8"},{"internalType":"uint8","name":"depositorTokenLength","type":"uint8"},{"internalType":"int8","name":"usdcIndex","type":"int8"}],"stateMutability":"view","type":"function"}];
     if (contractsConfig.rebindStrategyAddresses) {
       this.httpRebindStrategyContracts = contractsConfig.rebindStrategyAddresses.map(address => {
         return new this.httpWeb3.eth.Contract(contractsConfig.RebindStrategyAbi, address);
       })
+    }
+    if (contractsConfig.CvpMakerAddress) {
+      this.httpCvpMakerContract = new this.httpWeb3.eth.Contract(contractsConfig.CvpMakerAbi, contractsConfig.CvpMakerAddress);
     }
   }
 
@@ -160,6 +162,12 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       await pIteration.forEachSeries(rebindersToPoke, (rebinderToPoke) => {
         return this.rebinderPokeFromReporter(rebinderToPoke);
       });
+    }
+    if (this.httpCvpMakerContract) {
+      const tokenToPoker = await this.getTokenToMakeCvp();
+      if(tokenToPoker) {
+        return this.cvpMakerPokeFromReporter(tokenToPoker);
+      }
     }
   }
 
@@ -242,7 +250,6 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       config.poker.privateKey
     );
   }
-
 
   // ==============================================================
   // REBIND STRATEGY
@@ -555,6 +562,71 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   // ==============================================================
+  // CVP MAKER
+  // ==============================================================
+
+  async getTokenToMakeCvp() {
+    const timestamp = await this.getTimestamp();
+    let [{min: minReportInterval, max: maxReportInterval}, lastReporterPokeFrom] = await Promise.all([
+      this.httpPokerContract.methods.getMinMaxReportIntervals(this.httpCvpMakerContract._address).call(),
+      this.httpCvpMakerContract.methods.lastReporterPokeFrom().call().then(r => utils.normalizeNumber(r)),
+    ]);
+    minReportInterval = utils.normalizeNumber(minReportInterval);
+    const diff = timestamp - lastReporterPokeFrom;
+    if (diff < minReportInterval){
+      return null;
+    }
+
+    const cvpAmountOut = await this.httpCvpMakerContract.methods.cvpAmountOut().call().then(r => utils.weiToNumber(r, 18));
+
+    const tokens = [
+      '0x38e4adb44ef08f22f5b5b76a8f0c2d0dcbe7dca1', // CVP
+      // '0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9', // AAVE
+      // '0x0bc529c00c6401aef6d220be8c6ea1667f6ad93e', // YFI
+      // '0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f', // SNX
+      // '0xc00e94cb662c3520282e6f5717214004a7f26888', // COMP
+      // '0x0d438f3b5175bebc262bf23753c1e53d03432bde', // wNXM
+      // '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2', // MKR
+      // '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984', // UNI
+      // '0x6b3595068778dd592e39a122f4f5a5cf09c90fe2', // SUSHI
+      // '0x2ba592f78db6436527729929aaf6c908497cb200', // CREAM
+      // '0x8ab7404063ec4dbcfd4598215992dc3f8ec853d7', // AKRO
+      // '0x429881672b9ae42b8eba0e26cd9c73711b891ca5', // PICKLE
+      // '0x1ceb5cb57c4d4e2b2433641b95dd330a33185a44', // KP3R
+      // '0x3b96d491f067912d18563d56858ba7d6ec67a6fa', // yvCurve-USDN
+      // '0x5fa5b62c8af877cb37031e0a3b2f34a78e3c56a6', // yvCurve-LUSD
+      // '0x6ede7f19df5df6ef23bd5b9cedb651580bdf56ca', // yvCurve-BUSD
+      // '0xc4daf3b5e2a9e93861c3fbdd25f1e943b8d87417', // yvCurve-USDP
+      // '0x26607ac599266b21d13c7acf7942c7701a8b699c', // PIPT
+      // '0xb4bebd34f6daafd808f73de0d10235a92fbb6c3d', // YETI
+      // '0xfa2562da1bba7b954f26c74725df51fb62646313', // ASSY
+      // '0x9ba60ba98413a60db4c651d4afe5c937bbd8044b', // YLA
+    ];
+
+    let token;
+    await pIteration.some(tokens, async (t) => {
+      const tContract = new this.httpWeb3.eth.Contract(this.contractsConfig.BPoolAbi, t);
+      const tokenBalance = await tContract.methods.balanceOf(this.httpCvpMakerContract._address).call().then(r => utils.weiToNumber(r, 18));
+      if (tokenBalance >= cvpAmountOut) {
+        token = t;
+        return true;
+      }
+      return false;
+    });
+    return token;
+  }
+
+  async cvpMakerPokeFromReporter(token) {
+    console.log('cvpMakerPokeFromReporter');
+    return this.sendMethod(
+      this.httpCvpMakerContract,
+      'swapFromReporter',
+      [this.currentUserId, token, this.getPokeOpts()],
+      config.poker.privateKey
+    );
+  }
+
+  // ==============================================================
   // UTIL
   // ==============================================================
 
@@ -610,11 +682,11 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     const encodedABI = method.encodeABI();
 
     const gweiGasPrice = parseFloat(utils.weiToGwei(gasPrice.toString()));
-    if(gweiGasPrice > parseFloat(config.maxGasPrice)) {
+    if (gweiGasPrice > parseFloat(config.maxGasPrice)) {
       throw new Error('Max Gas Price: ' + Math.round(gweiGasPrice));
     }
 
-    let options: any = { from, gasPrice, nonce, data: encodedABI, to: contractAddress };
+    let options: any = { from, maxFeePerGas: gasPrice, maxPriorityFeePerGas: utils.gweiToWei(2), nonce, data: encodedABI, to: contractAddress };
 
     if (!options.nonce) {
       options.nonce = await this.httpWeb3.eth.getTransactionCount(from);
