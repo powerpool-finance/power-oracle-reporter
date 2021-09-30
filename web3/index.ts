@@ -706,7 +706,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         maxPriorityFeePerGas: utils.gweiToWei(1)
       })) * 1.1);
     } catch (e) {
-      throw new Error('Revert executing <code>' + contractAddress + '</code>: ' + e.message + '\n\n' + JSON.stringify(options))
+      throw new Error('Revert executing ' + contractAddress + ': ' + e.message + '\n\n' + JSON.stringify(options))
     }
 
     const needBalance = utils.mul(gasWith1Gwei, maxFeePerGas);
@@ -718,7 +718,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       options.gas = Math.round((await method.estimateGas(options)) * 1.1);
     } catch (e) {
       console.error(e.message);
-      throw new Error('Revert executing <code>' + contractAddress + '</code>: ' + e.message + '\n\n' + JSON.stringify(options))
+      throw new Error('Revert executing ' + contractAddress + ': ' + e.message + '\n\n' + JSON.stringify(options))
     }
 
     return this.httpWeb3.eth.accounts.signTransaction(options, privateKey, false);
