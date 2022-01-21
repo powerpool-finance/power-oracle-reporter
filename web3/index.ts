@@ -616,7 +616,6 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       const tContract = new this.httpWeb3.eth.Contract(this.contractsConfig.BPoolAbi, t);
       const tokenBalanceWei = await tContract.methods.balanceOf(this.httpCvpMakerContract._address).call();
       let availableCvpAmount;
-      console.log('t.toLowerCase() === this.cvpAddress', t.toLowerCase() === this.cvpAddress);
       if (t.toLowerCase() === this.cvpAddress) {
         availableCvpAmount = utils.weiToNumber(tokenBalanceWei, 18);
       } else {
@@ -624,7 +623,6 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
           tokenBalanceWei,
           [t, this.wethAddress, this.cvpAddress]
         ).call().then(wei => utils.weiToNumber(_.last(wei), 18))
-        console.log('availableCvpAmount', availableCvpAmount, 'cvpAmountOut', cvpAmountOut);
       }
       if (availableCvpAmount >= cvpAmountOut) {
         token = t;
