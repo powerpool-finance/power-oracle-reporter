@@ -33,6 +33,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   httpOracleContract: any;
   httpStackingContract: any;
   httpPokerContract: any;
+  httpUniswapRouterContract: any;
   httpWeightsStrategyContract: any;
   httpIndicesZapContract: any;
   httpCvpMakerContract: any;
@@ -45,6 +46,8 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   requiredConfirmations = 3;
 
   contractsConfig;
+  wethAddress;
+  cvpAddress;
 
   currentUserId;
   networkId;
@@ -73,10 +76,15 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   async createHttpContractInstances() {
     const {data: contractsConfig} = await axios.get(`https://${process.env.MAINNET ? '' : 'test-'}app.powerpool.finance/config/${config.network}.json`);
     this.contractsConfig = contractsConfig;
+
     this.httpCvpContract = new this.httpWeb3.eth.Contract(contractsConfig.CvpAbi, contractsConfig.CvpAddress);
     this.httpOracleContract = new this.httpWeb3.eth.Contract(contractsConfig.PokeOracleAbi, contractsConfig.PokeOracleAddress);
     this.httpStackingContract = new this.httpWeb3.eth.Contract(contractsConfig.PowerPokeStackingAbi, contractsConfig.PowerPokeStackingAddress);
     this.httpPokerContract = new this.httpWeb3.eth.Contract(contractsConfig.PowerPokeAbi, contractsConfig.PowerPokeAddress);
+    this.httpUniswapRouterContract = new this.httpWeb3.eth.Contract(contractsConfig.UniswapRouterAbi, contractsConfig.UniswapRouterAddress);
+
+    this.wethAddress = _.find(this.contractsConfig.Tokens, t => t.symbol === 'WETH').address;
+    this.cvpAddress = this.httpCvpContract._address.toLowerCase();
 
     if (contractsConfig.WeightsStrategyAddress) {
       this.httpWeightsStrategyContract = new this.httpWeb3.eth.Contract(contractsConfig.WeightsStrategyAbi, contractsConfig.WeightsStrategyAddress);
@@ -136,7 +144,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     }
     if (this.httpWeightsStrategyContract) {
       const poolsToRebalance = await this.getWeightStrategyPoolsToRebalance();
-      if(poolsToRebalance.length) {
+      if (poolsToRebalance.length) {
         await this.weightsStrategyPokeFromReporter(poolsToRebalance);
       }
     }
@@ -165,7 +173,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     }
     if (this.httpCvpMakerContract) {
       const tokenToPoker = await this.getTokenToMakeCvp();
-      if(tokenToPoker) {
+      if (tokenToPoker) {
         return this.cvpMakerPokeFromReporter(tokenToPoker);
       }
     }
@@ -587,7 +595,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       // '0xc00e94cb662c3520282e6f5717214004a7f26888', // COMP
       // '0x0d438f3b5175bebc262bf23753c1e53d03432bde', // wNXM
       // '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2', // MKR
-      // '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984', // UNI
+      '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984', // UNI
       // '0x6b3595068778dd592e39a122f4f5a5cf09c90fe2', // SUSHI
       // '0x2ba592f78db6436527729929aaf6c908497cb200', // CREAM
       // '0x8ab7404063ec4dbcfd4598215992dc3f8ec853d7', // AKRO
@@ -606,8 +614,17 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     let token;
     await pIteration.some(tokens, async (t) => {
       const tContract = new this.httpWeb3.eth.Contract(this.contractsConfig.BPoolAbi, t);
-      const tokenBalance = await tContract.methods.balanceOf(this.httpCvpMakerContract._address).call().then(r => utils.weiToNumber(r, 18));
-      if (tokenBalance >= cvpAmountOut) {
+      const tokenBalanceWei = await tContract.methods.balanceOf(this.httpCvpMakerContract._address).call();
+      let availableCvpAmount;
+      if (t.toLowerCase() === this.cvpAddress) {
+        availableCvpAmount = utils.weiToNumber(tokenBalanceWei, 18);
+      } else {
+        availableCvpAmount = await this.httpUniswapRouterContract.methods.getAmountsOut(
+          tokenBalanceWei,
+          [t, this.wethAddress, this.cvpAddress]
+        )
+      }
+      if (availableCvpAmount >= cvpAmountOut) {
         token = t;
         return true;
       }
