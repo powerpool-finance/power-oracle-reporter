@@ -623,7 +623,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         availableCvpAmount = await this.httpUniswapRouterContract.methods.getAmountsOut(
           tokenBalanceWei,
           [t, this.wethAddress, this.cvpAddress]
-        ).then(wei => utils.weiToNumber(_.last(wei), 18))
+        ).call().then(wei => utils.weiToNumber(_.last(wei), 18))
         console.log('availableCvpAmount', availableCvpAmount, 'cvpAmountOut', cvpAmountOut);
       }
       if (availableCvpAmount >= cvpAmountOut) {
