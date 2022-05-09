@@ -144,7 +144,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     console.log('checkAndActionAsReporter');
 
     const symbolsToReport = await this.getSymbolForReport();
-    if(symbolsToReport.length) {
+    if (symbolsToReport.length) {
       await this.oraclePokeFromReporter(symbolsToReport);
     }
     if (this.httpWeightsStrategyContract) {
@@ -250,6 +250,8 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       minReportInterval = utils.normalizeNumber(minReportInterval);
       maxReportInterval = utils.normalizeNumber(maxReportInterval);
       const diff = timestamp - lastRebalancedAt;
+      console.log('routerContract', routerContract._address);
+      console.log('diff > minReportInterval', diff > minReportInterval, 'reserveStatus.status.toString()', reserveStatus.status.toString(), 'reserveStatus.forceRebalance', reserveStatus.forceRebalance);
       return (diff > minReportInterval && reserveStatus.status.toString() !== '0') || reserveStatus.forceRebalance;
     })
   }
