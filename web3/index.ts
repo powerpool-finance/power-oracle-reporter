@@ -251,8 +251,8 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   async getStakeAndClaimStatus(routerContract) {
     return routerContract.methods.getStakeAndClaimStatus(
       await this.getPiTokenUnderlyingBalance(routerContract),
-      this.getRouterTokenUnderlyingStaked(routerContract),
-      this.getRouterTokenUnderlyingStaked(routerContract),
+      await this.getRouterTokenUnderlyingStaked(routerContract),
+      await this.getRouterTokenUnderlyingStaked(routerContract),
       '0',
       true,
       await routerContract.methods.connectors('0').call()
