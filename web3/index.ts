@@ -168,7 +168,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       const routersToPoke = await this.getRoutersToPoke();
       await pIteration.forEachSeries(routersToPoke, (routerToPoke) => {
         return this.routerPokeFromReporter(routerToPoke);
-      });
+      }).catch(() => {});
     }
     if (this.httpRebindStrategyContracts) {
       const rebindersToPoke = await this.getRebindersToPoke();
