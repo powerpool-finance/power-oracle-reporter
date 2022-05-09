@@ -239,25 +239,32 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   // ROUTERS
   // ==============================================================
 
-  async getPiTokenContract(address) {
+  getPiTokenContract(address) {
     return new this.httpWeb3.eth.Contract(this.contractsConfig.PiTokenAbi, address);
+  }
+  async getPiTokenUnderlyingBalance(routerContract) {
+    return this.getPiTokenContract(await routerContract.methods.piToken().call()).methods.getUnderlyingBalance().call();
+  }
+  async getRouterTokenUnderlyingStaked(routerContract) {
+    return routerContract.methods.getUnderlyingStaked().call();
+  }
+  async getStakeAndClaimStatus(routerContract) {
+    return routerContract.methods.getStakeAndClaimStatus(
+      await this.getPiTokenUnderlyingBalance(routerContract),
+      this.getRouterTokenUnderlyingStaked(routerContract),
+      this.getRouterTokenUnderlyingStaked(routerContract),
+      '0',
+      true,
+      await routerContract.methods.connectors('0').call()
+    ).call();
   }
   async getRoutersToPoke() {
     const timestamp = await this.getTimestamp();
     return pIteration.filter(this.httpRouterContracts, async (routerContract) => {
       let [{min: minReportInterval, max: maxReportInterval}, lastRebalancedAt, reserveStatus] = await Promise.all([
         this.httpPokerContract.methods.getMinMaxReportIntervals(routerContract._address).call(),
-
         (routerContract.methods.lastRebalancedAt || routerContract.methods.lastRebalancedByPokerAt)().call().then(r => utils.normalizeNumber(r)),
-
-        routerContract.methods.getReserveStatusForStakedBalance ? routerContract.methods.getReserveStatusForStakedBalance().call() : routerContract.getStakeAndClaimStatus(
-          await (await this.getPiTokenContract(await routerContract.methods.piToken().call())).methods.getUnderlyingBalance().call(),
-          await routerContract.methods.getUnderlyingStaked().call(),
-          await routerContract.methods.getUnderlyingStaked().call(),
-          '0',
-          true,
-          await routerContract.methods.connectors('0').call()
-        ).call()
+        routerContract.methods.getReserveStatusForStakedBalance ? routerContract.methods.getReserveStatusForStakedBalance().call() : this.getStakeAndClaimStatus(routerContract)
       ]);
       minReportInterval = utils.normalizeNumber(minReportInterval);
       maxReportInterval = utils.normalizeNumber(maxReportInterval);
