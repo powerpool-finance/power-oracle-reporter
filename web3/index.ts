@@ -16,6 +16,7 @@ const Web3 = require("web3");
 const pIteration = require("p-iteration");
 const axios = require('axios');
 const utils = require('../utils');
+const fs = require('fs');
 
 let config = require(process.env.MAINNET ? './config/mainnet' : './config/testnet');
 
@@ -74,7 +75,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async createHttpContractInstances() {
-    const contractsConfig = require('./config/' + config.network + '.json');
+    const contractsConfig = JSON.parse(fs.readFileSync('./config/' + config.network + '.json', {encoding: 'utf8'}));
     this.contractsConfig = contractsConfig;
 
     this.httpCvpContract = new this.httpWeb3.eth.Contract(contractsConfig.CvpAbi, contractsConfig.CvpAddress);
