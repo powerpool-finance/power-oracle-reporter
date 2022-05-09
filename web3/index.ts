@@ -94,7 +94,11 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     }
     if (contractsConfig.piTokenRouters) {
       this.httpRouterContracts = contractsConfig.piTokenRouters.map(address => {
-        return new this.httpWeb3.eth.Contract(contractsConfig.PiTokenSushiRouterAbi, address);
+        if (address === '0x5f85c951bdf84ee5c1a304d07fd8a7cd612fd4ae') {
+          return new this.httpWeb3.eth.Contract(contractsConfig.PiTokenSushiRouterAbi, address);
+        } else {
+          return new this.httpWeb3.eth.Contract(contractsConfig.PiTokenTornRouterAbi, address);
+        }
       })
     }
     if (contractsConfig.rebindStrategyAddresses) {
@@ -239,13 +243,13 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return pIteration.filter(this.httpRouterContracts, async (routerContract) => {
       let [{min: minReportInterval, max: maxReportInterval}, lastRebalancedAt, reserveStatus] = await Promise.all([
         this.httpPokerContract.methods.getMinMaxReportIntervals(routerContract._address).call(),
-        routerContract.methods.lastRebalancedAt().call().then(r => utils.normalizeNumber(r)),
-        routerContract.methods.getReserveStatusForStakedBalance().call()
+        (routerContract.methods.lastRebalancedAt || routerContract.methods.lastRebalancedByPokerAt)().call().then(r => utils.normalizeNumber(r)),
+        routerContract.methods.getReserveStatusForStakedBalance ? routerContract.methods.getReserveStatusForStakedBalance().call() : routerContract.getStakeAndClaimStatusByConnectorIndex('0', true).call()
       ]);
       minReportInterval = utils.normalizeNumber(minReportInterval);
       maxReportInterval = utils.normalizeNumber(maxReportInterval);
       const diff = timestamp - lastRebalancedAt;
-      return reserveStatus.forceRebalance || diff > minReportInterval;
+      return (diff > minReportInterval && reserveStatus.status.toString() !== '0') || reserveStatus.forceRebalance;
     })
   }
 
