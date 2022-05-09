@@ -267,6 +267,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     if (res.forceRebalance && res.status.toString() === '0') {
       // force claim rewards
       res.forceRebalance = await routerContract.methods.claimRewardsIntervalReached(c.lastClaimRewardsAt).call();
+      console.log('claimRewardsIntervalReached', res.forceRebalance, 'c.lastClaimRewardsAt', c.lastClaimRewardsAt.toString());
     }
     return res;
   }
