@@ -239,13 +239,23 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   // ROUTERS
   // ==============================================================
 
+  async getPiTokenContract(address) {
+    return new this.httpWeb3.eth.Contract(this.contractsConfig.PiTokenAbi, address);
+  }
   async getRoutersToPoke() {
     const timestamp = await this.getTimestamp();
     return pIteration.filter(this.httpRouterContracts, async (routerContract) => {
       let [{min: minReportInterval, max: maxReportInterval}, lastRebalancedAt, reserveStatus] = await Promise.all([
         this.httpPokerContract.methods.getMinMaxReportIntervals(routerContract._address).call(),
         (routerContract.methods.lastRebalancedAt || routerContract.methods.lastRebalancedByPokerAt)().call().then(r => utils.normalizeNumber(r)),
-        routerContract.methods.getReserveStatusForStakedBalance ? routerContract.methods.getReserveStatusForStakedBalance().call() : routerContract.getStakeAndClaimStatusByConnectorIndex('0', true).call()
+        routerContract.methods.getReserveStatusForStakedBalance ? routerContract.methods.getReserveStatusForStakedBalance().call() : routerContract.getStakeAndClaimStatus(
+          await (await this.getPiTokenContract(await routerContract.methods.piToken())).methods.getUnderlyingBalance(),
+          await routerContract.methods.getUnderlyingStaked(),
+          await routerContract.methods.getUnderlyingStaked(),
+          '0',
+          true,
+          await routerContract.methods.connectors('0')
+        ).call()
       ]);
       minReportInterval = utils.normalizeNumber(minReportInterval);
       maxReportInterval = utils.normalizeNumber(maxReportInterval);
