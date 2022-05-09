@@ -74,7 +74,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async createHttpContractInstances() {
-    const {data: contractsConfig} = await axios.get(`https://${process.env.MAINNET ? '' : 'test-'}app.powerpool.finance/config/${config.network}.json`);
+    const contractsConfig = require('./config/' + config.network + '.json');
     this.contractsConfig = contractsConfig;
 
     this.httpCvpContract = new this.httpWeb3.eth.Contract(contractsConfig.CvpAbi, contractsConfig.CvpAddress);
