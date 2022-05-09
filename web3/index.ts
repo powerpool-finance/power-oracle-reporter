@@ -249,20 +249,26 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     return routerContract.methods.getUnderlyingStaked().call();
   }
   async getStakeAndClaimStatus(routerContract) {
-    return routerContract.methods.getStakeAndClaimStatus(
+    const c = await routerContract.methods.connectors('0').call().then(c => {
+      c.stakeData = c.stakeData || '0x';
+      c.pokeData = c.pokeData || '0x';
+      c.stakeParams = c.stakeParams || '0x';
+      c.claimParams = c.claimParams || '0x';
+      return c;
+    });
+    const res = await routerContract.methods.getStakeAndClaimStatus(
       await this.getPiTokenUnderlyingBalance(routerContract),
       await this.getRouterTokenUnderlyingStaked(routerContract),
       await this.getRouterTokenUnderlyingStaked(routerContract),
       '0',
       true,
-      await routerContract.methods.connectors('0').call().then(c => {
-        c.stakeData = c.stakeData || '0x';
-        c.pokeData = c.pokeData || '0x';
-        c.stakeParams = c.stakeParams || '0x';
-        c.claimParams = c.claimParams || '0x';
-        return c;
-      })
+      c
     ).call();
+    if (c.forceRebalance && res.status.toString() === '0') {
+      // force claim rewards
+      res.forceRebalance = await routerContract.methods.claimRewardsIntervalReached(c.lastClaimRewardsAt).call();
+    }
+    return res;
   }
   async getRoutersToPoke() {
     const timestamp = await this.getTimestamp();
