@@ -256,6 +256,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       c.claimParams = c.claimParams || '0x';
       return c;
     });
+
     const res = await routerContract.methods.getStakeAndClaimStatus(
       await this.getPiTokenUnderlyingBalance(routerContract),
       await this.getRouterTokenUnderlyingStaked(routerContract),
@@ -263,7 +264,8 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       '0',
       true,
       c
-    ).call();
+    ).call(await this.getGasPriceOptions(10));
+
     if (res.forceRebalance && res.status.toString() === '0') {
       // force claim rewards
       res.forceRebalance = await routerContract.methods.claimRewardsIntervalReached(c.lastClaimRewardsAt).call();
@@ -733,17 +735,21 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     })
   }
 
-  async getTransaction(method, contractAddress, from, privateKey, nonce = null, gasPriceMul = 1) {
+  async getGasPriceOptions(gasPriceMul, ) {
     const maxFeePerGas = await this.getGasPrice();
-    const encodedABI = method.encodeABI();
-
     const gweiGasPrice = parseFloat(utils.weiToGwei(maxFeePerGas.toString()));
     if (gweiGasPrice > parseFloat(config.maxGasPrice)) {
       throw new Error('Max Gas Price: ' + Math.round(gweiGasPrice));
     }
     const maxPriorityFeePerGas = utils.gweiToWei(2 * gasPriceMul);
+    return {maxFeePerGas, maxPriorityFeePerGas};
+  }
 
-    let options: any = { from, maxFeePerGas, maxPriorityFeePerGas, nonce, data: encodedABI, to: contractAddress };
+  async getTransaction(method, contractAddress, from, privateKey, nonce = null, gasPriceMul = 1) {
+    const encodedABI = method.encodeABI();
+    const gasPriceOptions = await this.getGasPriceOptions(gasPriceMul);
+
+    let options: any = { from, ...gasPriceOptions, nonce, data: encodedABI, to: contractAddress };
 
     if (!options.nonce) {
       options.nonce = await this.httpWeb3.eth.getTransactionCount(from);
@@ -758,14 +764,13 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
     try {
       gasWith1Gwei = Math.round((await method.estimateGas({
         ...options,
-        maxFeePerGas,
-        maxPriorityFeePerGas: utils.gweiToWei(1)
+        ...gasPriceOptions
       })) * 1.1);
     } catch (e) {
       throw new Error('Revert executing ' + contractAddress + ': ' + e.message + '\n\n' + JSON.stringify(options))
     }
 
-    const needBalance = utils.mul(gasWith1Gwei, maxFeePerGas);
+    const needBalance = utils.mul(gasWith1Gwei, gasPriceOptions.maxFeePerGas);
     if(!utils.gte(await this.httpWeb3.eth.getBalance(from), needBalance)) {
       throw new Error('Not enough balance');
     }
