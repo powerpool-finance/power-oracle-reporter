@@ -264,7 +264,10 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       '0',
       true,
       c
-    ).call(await this.getGasPriceOptions(10));
+    ).call({
+      ...await this.getGasPriceOptions(5),
+      from: utils.getAddressByPrivateKey(config.poker.privateKey)
+    });
 
     if (res.forceRebalance && res.status.toString() === '0') {
       // force claim rewards
