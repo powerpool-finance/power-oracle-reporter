@@ -257,7 +257,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       return c;
     });
 
-    const gasPriceOptions = await this.getGasPriceOptions(5);
+    const gasPriceOptions = await this.getGasPriceOptions(3);
     const res = await routerContract.methods.getStakeAndClaimStatus(
       await this.getPiTokenUnderlyingBalance(routerContract),
       await this.getRouterTokenUnderlyingStaked(routerContract),
