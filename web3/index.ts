@@ -269,7 +269,9 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       from: utils.getAddressByPrivateKey(config.poker.privateKey),
       gas: 1e6
     });
-    console.log('isClaimAvailable res', await routerContract.methods.isClaimAvailable(
+    const connector = new this.httpWeb3.eth.Contract([{"inputs":[{"internalType":"bytes","name":"_claimParams","type":"bytes"},{"internalType":"uint256","name":"_lastClaimRewardsAt","type":"uint256"},{"internalType":"uint256","name":"_lastChangeStakeAt","type":"uint256"}],"name":"isClaimAvailable","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"}], c.connector);
+
+    console.log('isClaimAvailable res', await connector.methods.isClaimAvailable(
       c.claimParams,
       c.lastClaimRewardsAt,
       c.lastChangeStakeAt
