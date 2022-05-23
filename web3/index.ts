@@ -257,6 +257,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       return c;
     });
 
+    const gasPriceOptions = await this.getGasPriceOptions(5);
     const res = await routerContract.methods.getStakeAndClaimStatus(
       await this.getPiTokenUnderlyingBalance(routerContract),
       await this.getRouterTokenUnderlyingStaked(routerContract),
@@ -265,21 +266,23 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       true,
       c
     ).call({
-      ...await this.getGasPriceOptions(5),
+      ...gasPriceOptions,
       from: utils.getAddressByPrivateKey(config.poker.privateKey),
       gas: 1e6
     });
-    const connector = new this.httpWeb3.eth.Contract([{"inputs":[{"internalType":"bytes","name":"_claimParams","type":"bytes"},{"internalType":"uint256","name":"_lastClaimRewardsAt","type":"uint256"},{"internalType":"uint256","name":"_lastChangeStakeAt","type":"uint256"}],"name":"isClaimAvailable","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"}], c.connector);
+    const connector = new this.httpWeb3.eth.Contract([{"inputs":[{"internalType":"bytes","name":"_claimParams","type":"bytes"},{"internalType":"uint256","name":"_lastClaimRewardsAt","type":"uint256"},{"internalType":"uint256","name":"_lastChangeStakeAt","type":"uint256"}],"name":"isClaimAvailable","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_lastClaimRewardsAt","type":"uint256"},{"internalType":"uint256","name":"_lastChangeStakeAt","type":"uint256"},{"internalType":"uint256","name":"_reinvestDuration","type":"uint256"}],"name":"getPendingAndForecastReward","outputs":[{"internalType":"uint256","name":"pending","type":"uint256"},{"internalType":"uint256","name":"forecast","type":"uint256"},{"internalType":"uint256","name":"forecastByPending","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes","name":"_claimParams","type":"bytes"}],"name":"unpackClaimParams","outputs":[{"internalType":"uint256","name":"paybackDuration","type":"uint256"},{"internalType":"uint256","name":"gasToReinvest","type":"uint256"}],"stateMutability":"pure","type":"function"},{"inputs":[{"internalType":"uint256","name":"_gasUsed","type":"uint256"},{"internalType":"uint256","name":"_gasPrice","type":"uint256"}],"name":"getTornUsedToReinvest","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}], c.connector);
 
-    console.log('isClaimAvailable res', await connector.methods.isClaimAvailable(
-      c.claimParams,
+    const claimParams = await connector.methods.unpackClaimParams(c.claimParams);
+    const {pending, forecastByPending} = await connector.methods.getPendingAndForecastReward(
       c.lastClaimRewardsAt,
-      c.lastChangeStakeAt
-    ).call({
-      ...await this.getGasPriceOptions(5),
-      gas: 1e6
-    }));
-    console.log('getStakeAndClaimStatus', res);
+      c.lastChangeStakeAt,
+      claimParams.paybackDuration
+    ).call({});
+    const tornUsedToReinvest = await connector.methods.getTornUsedToReinvest(
+      claimParams.gasToReinvest,
+      utils.add(gasPriceOptions.maxFeePerGas, gasPriceOptions.maxPriorityFeePerGas)
+    ).call({});
+    console.log('pending', utils.weiToEther(pending), 'forecastByPending', utils.weiToEther(forecastByPending), 'tornUsedToReinvest', utils.weiToEther(tornUsedToReinvest));
 
     if (res.forceRebalance && res.status.toString() === '0') {
       // force claim rewards
