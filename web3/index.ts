@@ -269,6 +269,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       from: utils.getAddressByPrivateKey(config.poker.privateKey),
       gas: 1e6
     });
+    console.log('getStakeAndClaimStatus res', res);
 
     if (res.forceRebalance && res.status.toString() === '0') {
       // force claim rewards
@@ -750,6 +751,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       throw new Error('Max Gas Price: ' + Math.round(gweiGasPrice));
     }
     const maxPriorityFeePerGas = utils.gweiToWei(priorityFee);
+    console.log('maxFeePerGas', this.httpWeb3.utils.weiToGwei(maxFeePerGas), 'maxPriorityFeePerGas', this.httpWeb3.utils.weiToGwei(maxPriorityFeePerGas));
     return {maxFeePerGas, maxPriorityFeePerGas};
   }
 
@@ -1025,7 +1027,6 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         const { data: gasData } = await axios.get('https://etherchain.org/api/gasPriceOracle');
         let gasPrice = parseFloat(gasData.standard);
         gasPrice = web3GasPriceGwei / 2 > gasPrice ? web3GasPriceGwei : gasPrice + 5;
-        console.log('gasPrice', gasPrice, 'web3GasPriceGwei', web3GasPriceGwei, 'gasData', gasData);
         return utils.gweiToWei(gasPrice);
       } catch (e) {
         return utils.gweiToWei(web3GasPriceGwei);
