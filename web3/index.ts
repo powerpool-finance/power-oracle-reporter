@@ -751,7 +751,7 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       throw new Error('Max Gas Price: ' + Math.round(gweiGasPrice));
     }
     const maxPriorityFeePerGas = utils.gweiToWei(priorityFee);
-    console.log('maxFeePerGas', this.httpWeb3.utils.weiToGwei(maxFeePerGas), 'maxPriorityFeePerGas', this.httpWeb3.utils.weiToGwei(maxPriorityFeePerGas));
+    console.log('maxFeePerGas', utils.weiToGwei(maxFeePerGas), 'maxPriorityFeePerGas', utils.weiToGwei(maxPriorityFeePerGas));
     return {maxFeePerGas, maxPriorityFeePerGas};
   }
 
