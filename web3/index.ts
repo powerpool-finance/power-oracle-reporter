@@ -269,7 +269,15 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       from: utils.getAddressByPrivateKey(config.poker.privateKey),
       gas: 1e6
     });
-    console.log('getStakeAndClaimStatus res', res);
+    console.log('isClaimAvailable res', await routerContract.methods.isClaimAvailable(
+      c.claimParams,
+      c.lastClaimRewardsAt,
+      c.lastChangeStakeAt
+    ).call({
+      ...await this.getGasPriceOptions(5),
+      gas: 1e6
+    }));
+    console.log('getStakeAndClaimStatus', res);
 
     if (res.forceRebalance && res.status.toString() === '0') {
       // force claim rewards
