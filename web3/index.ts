@@ -278,11 +278,16 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
       c.lastChangeStakeAt,
       claimParams.paybackDuration
     ).call({});
+    const {forecastByPending: forecastByPendingX2} = await connector.methods.getPendingAndForecastReward(
+        c.lastClaimRewardsAt,
+        c.lastChangeStakeAt,
+        parseInt(claimParams.paybackDuration) * 2
+    ).call({});
     const tornUsedToReinvest = await connector.methods.getTornUsedToReinvest(
       claimParams.gasToReinvest,
       utils.add(gasPriceOptions.maxFeePerGas, gasPriceOptions.maxPriorityFeePerGas)
     ).call({});
-    console.log('pending', utils.weiToEther(pending), 'forecastByPending', utils.weiToEther(forecastByPending), 'tornUsedToReinvest', utils.weiToEther(tornUsedToReinvest));
+    console.log('pending', utils.weiToEther(pending), 'forecastByPending', utils.weiToEther(forecastByPending), 'forecastByPendingX2', utils.weiToEther(forecastByPendingX2), 'tornUsedToReinvest', utils.weiToEther(tornUsedToReinvest));
 
     if (res.forceRebalance && res.status.toString() === '0') {
       // force claim rewards
