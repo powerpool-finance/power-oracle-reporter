@@ -170,12 +170,12 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
         return this.routerPokeFromReporter(routerToPoke);
       }).catch(() => {});
     }
-    if (this.httpRebindStrategyContracts) {
-      const rebindersToPoke = await this.getRebindersToPoke();
-      await pIteration.forEachSeries(rebindersToPoke, (rebinderToPoke) => {
-        return this.rebinderPokeFromReporter(rebinderToPoke);
-      });
-    }
+    // if (this.httpRebindStrategyContracts) {
+    //   const rebindersToPoke = await this.getRebindersToPoke();
+    //   await pIteration.forEachSeries(rebindersToPoke, (rebinderToPoke) => {
+    //     return this.rebinderPokeFromReporter(rebinderToPoke);
+    //   });
+    // }
     if (this.httpCvpMakerContract) {
       const tokenToPoker = await this.getTokenToMakeCvp();
       if (tokenToPoker) {
