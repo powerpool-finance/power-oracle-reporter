@@ -417,9 +417,15 @@ class PowerOracleWeb3 implements IPowerOracleWeb3 {
   }
 
   async getReadyToExecuteRounds() {
-    const fromBlock = (await this.getCurrentBlock()) - 2000000;
+    const fromBlock = (await this.getCurrentBlock()) - 200000;
     const roundInited = await this.httpIndicesZapContract.getPastEvents('InitRound', { fromBlock });
     const readyToExecute = [];
+    roundInited.push({ returnValues: { key: '0xa17f95976d50f2a96ffed9226af69566ed905a60755c03c06c20735f85e2c41c' } });
+    roundInited.push({ returnValues: { key: '0x141f1a63b077e5cd149b81d7bac5b9ebdd7f15b664dc09ede3204eb768b74e67' } });
+    roundInited.push({ returnValues: { key: '0x10e1ef1b451eb9cc3d3276db368133308a47f4c518288048fa5b68f6f92e179b' } });
+    roundInited.push({ returnValues: { key: '0x9e79248a23af2571a72225a0231308c2ceb6cd15c28d8003c32b7f28c1273fdf' } });
+    roundInited.push({ returnValues: { key: '0x90cac8a24f77e26d84610fdebcdf4cc8d1548b7026d13fee20e0b0a392add4e3' } });
+    roundInited.push({ returnValues: { key: '0x5d95829235fb367b011b0de9fdc393e8a88767ab7ab65fec1429a34808ca1af9' } });
     await pIteration.forEachSeries(_.chunk(roundInited, 10), (chunk) => {
       return pIteration.forEach(chunk, async (e) => {
         if (await this.getRoundReadyToExecute(e.returnValues.key)) {
